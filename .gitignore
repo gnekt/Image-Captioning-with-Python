@@ -117,4 +117,5 @@ dmypy.json
 
 # NN Purpose
 dataset/*
+.saved/*
 *.Identifier

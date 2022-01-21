@@ -4,6 +4,9 @@ from PIL import Image
 from torchvision import transforms
 import torch
 
+
+import re
+
 class ABCPreProcess(ABC):
     """Class which implements preprocessing methods for a given object
     """
@@ -56,7 +59,7 @@ class PreProcessImageForEvaluation(ABCPreProcess):
                     }
                     "mean": (float),
                     "std_dev": (float)
-                }
+              }
                 
             Returns:
                 torch.FloatTensor: torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] 
@@ -69,7 +72,19 @@ class PreProcessImageForEvaluation(ABCPreProcess):
         ])
         return operations(object_i)
     
+class PreProcessCaption(ABCPreProcess):
     
+    def process(self, caption: str, **parameters) -> torch.tensor:
+        """Process a caption for being used in the network
+
+        Args:
+            caption (str): The caption to be processed.
+
+        Returns:
+            torch.tensor: A tensor 
+        """
+        tokenized_caption = re.findall("[\\w]+", caption.lower())
+        return torch.tensor(tokenized_caption)
     
     
     
