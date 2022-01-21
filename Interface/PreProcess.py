@@ -19,7 +19,8 @@ class ABCPreProcess(ABC):
 class PreProcessImageForTraining(ABCPreProcess):
     
     def process(self, object_i: Image, **parameters) -> torch.FloatTensor:
-        """Function that pre-process an image for training.
+        """
+        Function that pre-process an image for training.
 
         Args:
             object_i (Image): [description], 
@@ -98,3 +99,4 @@ class PreProcess():
 # How to use 
 
 if __name__ == '__main__':
+    pass
