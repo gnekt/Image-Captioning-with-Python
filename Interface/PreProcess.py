@@ -3,9 +3,11 @@ from enum import Enum
 from PIL import Image
 from torchvision import transforms
 import torch
-
-
+from ..Models.Dataset import Dataset
+from ..Models.Sample import Sample
+from ..Models.Vocabulary import Vocabulary
 import re
+from typing import Tuple
 
 class ABCPreProcess(ABC):
     """Class which implements preprocessing methods for a given object
@@ -18,6 +20,7 @@ class ABCPreProcess(ABC):
 
 class PreProcessImageForTraining(ABCPreProcess):
     
+    @staticmethod
     def process(self, object_i: Image, **parameters) -> torch.FloatTensor:
         """
         Function that pre-process an image for training.
@@ -48,7 +51,8 @@ class PreProcessImageForTraining(ABCPreProcess):
     
     
 class PreProcessImageForEvaluation(ABCPreProcess):
-        
+    
+    @staticmethod
     def process(self, object_i: Image, **parameters) -> torch.FloatTensor:
         """Function that pre-process an image for evaluation.
             Args:
@@ -75,6 +79,7 @@ class PreProcessImageForEvaluation(ABCPreProcess):
     
 class PreProcessCaption(ABCPreProcess):
     
+    @staticmethod
     def process(self, caption: str, **parameters) -> torch.tensor:
         """Process a caption for being used in the network
 
@@ -86,14 +91,27 @@ class PreProcessCaption(ABCPreProcess):
         """
         tokenized_caption = re.findall("[\\w]+", caption.lower())
         return torch.tensor(tokenized_caption)
+
+#TO Do
+class PreProcessDatasetForTraining(ABCPreProcess):
     
+    @staticmethod
+    def process(self, dataset, vocabulary) -> Tuple(Dataset,Vocabulary):
+            pass
+        
+#TO Do
+class PreProcessDatasetForEvaluation(ABCPreProcess):
     
+    @staticmethod
+    def process(self, dataset, vocabulary) -> Tuple(Dataset,Vocabulary):
+            pass
     
 class PreProcess():
     ImageForTraining = PreProcessImageForTraining
     ImageForEvaluation = PreProcessImageForEvaluation
     Caption = PreProcessCaption
-    
+    DatasetForTraining = PreProcessDatasetForTraining
+    DatasetForEvaluation = PreProcessDatasetForTraining
     
 # ----------------------------------------------------------------
 # How to use 

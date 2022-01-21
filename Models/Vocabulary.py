@@ -135,6 +135,13 @@ class Vocabulary():
         _words_flatten = [word for sequence in sequences for word in sequence] # flatten a list of list,  credits to wjandrea on stackoverflow <3
         return self.enrich(_words_flatten)
     
+    
+    def __len__(self):
+        """The total number of words in this Vocabulary."""
+
+        return len(self.word2id.keys())
+    
+    
 # ----------------------------------------------------------------
 # Usage example
 

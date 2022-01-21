@@ -1,5 +1,6 @@
 from PIL import Image
 import os
+
 class Sample():
     """Model class for managing a sigle sample of the dataset.
     """
@@ -15,7 +16,6 @@ class Sample():
             caption (str): Raw caption associated with this sample. 
                         [Constraint: Caption has to be a string with length greater than 1 characters.]
             verbose (bool, optional): The class will be verbose if True. Defaults to False.
-
         Raises:
             FileNotFoundError: The given relative path to the image is invalid.
             ValueError: The caption is invalid.
@@ -56,7 +56,9 @@ class Sample():
         # Set verbosity 
         self._verbose = verbose
         
-    
+        # Tell externally if this sample is altered (pre-processed, or other..) if False, otherwise the data is inside are raw if True
+        self.is_raw = True
+        
     @property
     def image(self) -> Image:
         """Getter of the image property
@@ -66,4 +68,24 @@ class Sample():
         """
         print("Getter called.")
         return self._image
+    
+    def alter_image(self, altered_image: Image):
+        """Alter the sample image by place a new one (could be the same but modified or another one) 
+
+        Args:
+            image (Image): The new image
+        """
+        self.image = altered_image
+        self.is_raw = False
+        
+    def alter_caption(self, altered_caption):
+        """Alter the caption, now could be a string as before or a list of string, ready for being processed by the NN.
+
+        Args:
+            image (Image): The new image
+        """
+        self.caption = altered_caption
+        self.is_raw = False
+        
+    
         
