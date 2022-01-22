@@ -66,16 +66,15 @@ class Sample():
         Returns:
             Image: The image object.
         """
-        print("Getter called.")
         return self._image
     
-    def alter_image(self, altered_image: Image):
-        """Alter the sample image by place a new one (could be the same but modified or another one) 
+    def alter_image(self, altered_image):
+        """Alter the sample image by place a new one (could be the same but modified or a tensorial form of the image) 
 
         Args:
-            image (Image): The new image
+            image (object): The new image with possible differente representation
         """
-        self.image = altered_image
+        self._image = altered_image
         self.is_raw = False
         
     def alter_caption(self, altered_caption):

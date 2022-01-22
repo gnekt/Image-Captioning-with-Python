@@ -42,6 +42,7 @@ class Dataset():
         Args:
             directory_of_data (str): [description]
         """
+        self.state: DatasetState = state
         if already_computed_dataframe is not None:
             self.dataset = already_computed_dataframe
             return 
@@ -55,7 +56,7 @@ class Dataset():
         samples = _temp_dataset.apply(lambda row: Sample(int(row.name)+1,f"{directory_of_data}/images/{row.image_name}",row.comment),axis=1)
         
         self.dataset: pd.DataFrame = pd.DataFrame(list(zip([i for i in range(len(samples))],samples,[False for _ in range(len(samples))])), columns=["id_sample","sample","dirty"])
-        self.state: DatasetState = state
+        
     
     def suffle_data_set(self):
         self.dataset.apply(torch.randperm, axis=0)
