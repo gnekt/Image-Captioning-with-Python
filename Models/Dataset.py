@@ -103,7 +103,7 @@ class MyDataset(Dataset):
         
         images, captions = zip(*data)
         captions = nn.utils.rnn.pad_sequence(captions, padding_value=0)
-        return images,captions
+        return torch.stack(images,dim=0),captions # Images are a tuple of images we need a tensorial form so..stack it! 
 #-------------------------------
 # Usage
 

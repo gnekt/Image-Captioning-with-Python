@@ -97,7 +97,7 @@ class PreProcessDatasetForTraining(ABCPreProcess):
     
     image_trasformation_parameter = {
         "crop":{
-            "size": 32,
+            "size": 224,
             "scale": (0.08,1.0),
             "ratio": (3. / 4., 4. / 3.),
         },
