@@ -84,6 +84,15 @@ class Vocabulary():
             counter += 1
         return _sequence
     
+    def rev_translate(self, words_id : torch.tensor) -> list[str]:
+        """Given a sequence of word, translate into id list according to the vocabulary.
+
+        Args:
+            word_sequence (str): [description]
+        """
+        # Check if the Vocabulary is enriched with all the possible word outside glove, taken from the dataset.
+        return [list(self.word2id.keys())[idx] for idx in words_id[0,:].tolist()]   # word_id (1,caption_length)
+    
     
     @property
     def make_enrich(self):
