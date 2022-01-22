@@ -92,7 +92,7 @@ class PreProcessCaption(ABCPreProcess):
         tokenized_caption = re.findall("[\\w]+|\.|\,", caption.lower())
         return tokenized_caption
 
-#TO Do
+
 class PreProcessDatasetForTraining(ABCPreProcess):
     
     image_trasformation_parameter = {
@@ -124,7 +124,10 @@ class PreProcessDatasetForTraining(ABCPreProcess):
         vocabulary.bulk_enrich([sample.caption for sample in dataset.dataset["sample"][:]])
         vocabulary.make_enrich = False
         
+        # Do the In Place Translation for the caption for each sample in the dataset
+        dataset.dataset.apply(lambda record: record["sample"].alter_caption(vocabulary.translate(record["sample"].caption)), axis=1)
         return dataset, vocabulary
+    
 #TO Do
 class PreProcessDatasetForEvaluation(ABCPreProcess):
     
