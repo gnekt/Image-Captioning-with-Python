@@ -92,7 +92,7 @@ class MyDataset(Dataset):
         
         if self.state == DatasetState.Raw:
             raise ValidationErr("The getitem built-in method cannot be executed when the dataset is in a RAW state.\n Please do some preprocessing on it before __getitem__ call.")
-        print(f"Dataset state: {self.state}")
+        
         
         sample: Sample = self.dataset.iloc[idx]["sample"]
         image, caption = sample.image, sample.caption
@@ -103,7 +103,7 @@ class MyDataset(Dataset):
         
         images, captions = zip(*data)
         captions = nn.utils.rnn.pad_sequence(captions, padding_value=0)
-        return torch.stack(images,dim=0),captions # Images are a tuple of images we need a tensorial form so..stack it! 
+        return torch.stack(images,dim=0),captions.reshape((captions.shape[1],-1)).type(torch.LongTensor) # Images are a tuple of images we need a tensorial form so..stack it! 
 #-------------------------------
 # Usage
 

@@ -76,7 +76,7 @@ class DecoderRNN(nn.Module):
         lstm_out, self.hidden = self.lstm(embeddings, self.hidden) # lstm_out shape : (batch_size, caption length, hidden_size)
 
         # Fully connected layer
-        outputs = self.linear(lstm_out) # outputs shape : (batch_size, caption length + 1, vocab_size)
+        outputs = self.linear(lstm_out) # outputs shape : (batch_size, caption length, vocab_size)
 
         return outputs
     
@@ -95,7 +95,87 @@ class DecoderRNN(nn.Module):
         sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
         return sampled_ids
 
+def train(train_set, validation_set, lr, epochs, vocabulary):
+        
+        criterion = nn.CrossEntropyLoss()
+        
+        # initializing some elements
+        best_val_acc = -1.  # the best accuracy computed on the validation data
+        best_epoch = -1  # the epoch in which the best accuracy above was computed
 
+        encoder = EncoderCNN(50)
+        decoder = DecoderRNN(100,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
+    
+        # ensuring the classifier is in 'train' mode (pytorch)
+        decoder.train()
+
+        # creating the optimizer
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, decoder.parameters()), lr)
+
+        # loop on epochs!
+        for e in range(0, epochs):
+
+            # epoch-level stats (computed by accumulating mini-batch stats)
+            epoch_train_acc = 0.
+            epoch_train_loss = 0.
+            epoch_num_train_examples = 0
+
+            for images,captions in train_set:
+                optimizer.zero_grad()  # zeroing the memory areas that were storing previously computed gradients
+                
+                batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size')
+                epoch_num_train_examples += batch_num_train_examples
+
+                # X = .to(self.device)
+                # X_rev = X_rev.to(self.device)
+                # X_len = X_len.to(self.device)
+                # y = y.to(self.device)
+
+                # computing the network output on the current mini-batch
+                features = encoder(images)
+                outputs = decoder(features, captions)
+
+                # computing the loss function
+                loss = criterion(outputs.contiguous().view(-1, len(vocabulary.word2id.keys())), captions.view(-1))
+
+                # computing gradients and updating the network weights
+                loss.backward()  # computing gradients
+                optimizer.step()  # updating weights
+
+                print(f"mini-batch:\tloss={loss.item():.4f}")
+                # computing the performance of the net on the current training mini-batch
+                # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
+                #     self.net.eval()  # switching to eval mode
+
+                #     # computing performance
+                #     batch_train_acc = self.__performance(outputs, y)
+
+                #     # accumulating performance measures to get a final estimate on the whole training set
+                #     epoch_train_acc += batch_train_acc * batch_num_train_examples
+
+                #     # accumulating other stats
+                #     epoch_train_loss += loss.item() * batch_num_train_examples
+
+                #     self.net.train()  # going back to train mode
+
+                #     # printing (mini-batch related) stats on screen
+                #     print("  mini-batch:\tloss={0:.4f}, tr_acc={1:.2f}".format(loss.item(), batch_train_acc))
+
+            # val_acc = self.eval_classifier(validation_set)
+
+            # # saving the model if the validation accuracy increases
+            # if val_acc > best_val_acc:
+            #     best_val_acc = val_acc
+            #     best_epoch = e + 1
+            #     self.save("classifier.pth")
+
+            # epoch_train_loss /= epoch_num_train_examples
+
+            # # printing (epoch related) stats on screen
+            # print(("epoch={0}/{1}:\tloss={2:.4f}, tr_acc={3:.2f}, val_acc={4:.2f}"
+            #        + (", BEST!" if best_epoch == e + 1 else ""))
+            #       .format(e + 1, epochs, epoch_train_loss,
+            #               epoch_train_acc / epoch_num_train_examples, val_acc))
 
 # Example of usage
 if __name__ == "__main__":
@@ -104,18 +184,13 @@ if __name__ == "__main__":
     from Dataset import MyDataset
     from torch.utils.data import DataLoader
     ds = MyDataset("./dataset")
-    df = ds.get_fraction_of_dataset(percentage=10)
+    df = ds.get_fraction_of_dataset(percentage=40)
     
     # use dataloader facilities which requires a preprocessed dataset
     v = Vocabulary(verbose=True)    
     df_pre_processed,v_enriched = PreProcess.DatasetForTraining.process(dataset=df,vocabulary=v)
     
-    dataloader = DataLoader(df, batch_size=4,
+    dataloader = DataLoader(df, batch_size=32,
                         shuffle=False, num_workers=0, collate_fn=df.pack_minibatch)
     
-    encoder = EncoderCNN(50)
-    decoder = DecoderRNN(100,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
-    for images,captions in dataloader:
-        features = encoder(images)
-        caption = decoder.sample(features[0])
-        print(v_enriched.rev_translate(caption))
+    train(dataloader, dataloader, 1e-2, 10, v_enriched)
