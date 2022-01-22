@@ -1,10 +1,13 @@
+from xml.dom import ValidationErr
+
 from Sample import Sample
 import os
 import pandas as pd 
 import torch
 import numpy as np 
 from enum import Enum
-
+from torch.utils.data import Dataset, DataLoader
+import torch.nn as nn
 
 class DatasetState(Enum):
     """A dataset could be in 3 possible, mutual exclusive, state:
@@ -24,7 +27,7 @@ class DatasetState(Enum):
 #       1) un file result.csv che contiene i dati come il formato gia` definito
 #       2) una cartella images nella quale ci sono tutte le immagini, tutte le sottocartelle di images non verranno considerate
 
-class Dataset():
+class MyDataset(Dataset):
     # The dataset will have this shape
     # | id_sample | sample | dirty |
     # |-----------|--------|-------|
@@ -68,7 +71,7 @@ class Dataset():
         _temp_df_moved = _temp_df.head(int(len(_temp_df)*(percentage/100)))
         _temp_df_copy = _temp_df_moved.copy()
         self.dataset.loc[_temp_df_moved["id_sample"],"dirty"] = True
-        return Dataset(already_computed_dataframe=_temp_df_copy)
+        return MyDataset(already_computed_dataframe=_temp_df_copy)
         
 
     def make_dirty(self) -> bool:
@@ -77,13 +80,46 @@ class Dataset():
     def make_clean(self) -> bool:
         self.dataset["dirty"] = False
     
-    def __len__(self):
-        return self.dataset.shape(0)
+    # torch.utils.data.Dataset is an abstract class representing a dataset. Your custom dataset should inherit Dataset and override the following methods:
+
+    # __len__ so that len(dataset) returns the size of the dataset.
+    # __getitem__ to support the indexing such that dataset[i] can be used to get i-ith sample.
     
+    def __len__(self):
+        return self.dataset.shape[0]
+    
+    def __getitem__(self, idx):
+        
+        if self.state == DatasetState.Raw:
+            raise ValidationErr("The getitem built-in method cannot be executed when the dataset is in a RAW state.\n Please do some preprocessing on it before __getitem__ call.")
+        print(f"Dataset state: {self.state}")
+        
+        sample: Sample = self.dataset.iloc[idx]["sample"]
+        image, caption = sample.image, sample.caption
+        
+        return image,caption 
+    
+    def pack_minibatch(self, data):
+        
+        images, captions = zip(*data)
+        captions = nn.utils.rnn.pad_sequence(captions, padding_value=0)
+        return images,captions
 #-------------------------------
 # Usage
 
 if __name__ == "__main__":
-    ds = Dataset("./dataset")
+    from Vocabulary import Vocabulary
+    from PreProcess import PreProcess
+    ds = MyDataset("./dataset")
     df = ds.get_fraction_of_dataset(percentage=10)
     print("pippo")
+    
+    # use dataloader facilities which requires a preprocessed dataset
+    v = Vocabulary(verbose=True)    
+    df_pre_processed,v_enriched = PreProcess.DatasetForTraining.process(dataset=df,vocabulary=v)
+    
+    dataloader = DataLoader(df, batch_size=4,
+                        shuffle=False, num_workers=0, collate_fn=df.pack_minibatch)
+    
+    for i_batch,[images,captions] in enumerate(dataloader):
+        print(i_batch, captions)

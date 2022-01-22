@@ -126,14 +126,47 @@ class PreProcessDatasetForTraining(ABCPreProcess):
         
         # Do the In Place Translation for the caption for each sample in the dataset
         dataset.dataset.apply(lambda record: record["sample"].alter_caption(vocabulary.translate(record["sample"].caption)), axis=1)
+        
+        dataset.state = DatasetState.Training
         return dataset, vocabulary
     
-#TO Do
+
 class PreProcessDatasetForEvaluation(ABCPreProcess):
     
+    image_trasformation_parameter = {
+        "crop":{
+            "size": 256,
+            "center": 224
+        },
+        "mean": torch.tensor([0.485, 0.456, 0.406]), # the mean of the training data on the 3 channels (RGB)
+        "std_dev": torch.tensor([0.229, 0.224, 0.225]) # the standard deviation of the training data on the 3 channels (RGB)
+    }
     @staticmethod
     def process(dataset: Dataset, vocabulary: Vocabulary) -> Tuple[Dataset,Vocabulary]:
-            pass
+        
+        # Control block
+        if dataset.state == DatasetState.Training:
+            torch.warnings.warn("The Dataset is already prepared for Training, another pre-process training could lead to some inconsistence.")
+            
+        if dataset.state == DatasetState.Evaluation:
+            torch.warnings.warn("The Dataset is already prepared for Evaluation, pre-process for training could lead to some inconsistence.")
+        
+        # PreProcess block
+        for sample in dataset.dataset["sample"]:
+            sample.alter_caption(PreProcess.Caption.process(sample.caption))
+            sample.alter_image(PreProcess.ImageForTraining.process(sample.image, PreProcessDatasetForTraining.image_trasformation_parameter))
+        
+            
+        # Enrich the vocabulary
+        vocabulary.make_enrich = True
+        vocabulary.bulk_enrich([sample.caption for sample in dataset.dataset["sample"][:]])
+        vocabulary.make_enrich = False
+        
+        # Do the In Place Translation for the caption for each sample in the dataset
+        dataset.dataset.apply(lambda record: record["sample"].alter_caption(vocabulary.translate(record["sample"].caption)), axis=1)
+        
+        dataset.state = DatasetState.Evaluation
+        return dataset, vocabulary
     
 class PreProcess():
     ImageForTraining = PreProcessImageForTraining
