@@ -39,7 +39,7 @@ class MyDataset(Dataset):
     # sample is the <Sample> object associated 
     # dirty is boolean and it means: this sample was already taken from the method get_fraction_of_dataset, this implies that externally somebody already taken this sample.
     
-    def __init__(self, directory_of_data:str = None, already_computed_dataframe: pd.DataFrame = None, state: DatasetState = DatasetState.Raw):
+    def __init__(self, directory_of_data:str = None, percentage:int = 100,already_computed_dataframe: pd.DataFrame = None, state: DatasetState = DatasetState.Raw):
         """Create a new dataset from source files
 
         Args:
@@ -55,7 +55,8 @@ class MyDataset(Dataset):
         if not os.path.isdir(directory_of_data):
             raise ValueError(f"{directory_of_data} is not a directory!")
         
-        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]].iloc[0:1000,:]
+        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]]
+        _temp_dataset = _temp_dataset.head(int(len(_temp_dataset)*(percentage/100)))
         samples = _temp_dataset.apply(lambda row: Sample(int(row.name)+1,f"{directory_of_data}/images/{row.image_name}",row.comment),axis=1)
         
         self.dataset: pd.DataFrame = pd.DataFrame(list(zip([i for i in range(len(samples))],samples,[False for _ in range(len(samples))])), columns=["id_sample","sample","dirty"])

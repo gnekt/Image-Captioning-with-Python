@@ -7,7 +7,7 @@ import torch.nn.functional as F
 class EncoderCNN(nn.Module):
     def __init__(self, embed_size):
         super(EncoderCNN, self).__init__()
-        resnet = torch.hub.load('pytorch/vision:v0.6.0', 'resnet50', pretrained=True)
+        resnet = models.resnet50(pretrained=True)
         for param in resnet.parameters():
             param.requires_grad_(False)
         
@@ -16,7 +16,8 @@ class EncoderCNN(nn.Module):
         self.embed = nn.Linear(resnet.fc.in_features, embed_size) # attach a linear layer ()
 
     def forward(self, images):
-        features = self.resnet(images) 
+        with torch.no_grad():
+            features = self.resnet(images) 
         features = features.reshape(features.size(0), -1)
         features = self.embed(features)
         return features
@@ -60,7 +61,8 @@ class DecoderRNN(nn.Module):
         
         # Initialize the hidden state
         batch_size = features.shape[0] # features is of shape (batch_size, embed_size)
-                
+        self.hidden = self.init_hidden(batch_size)
+        
         # Create embedded word vectors for each word in the captions
         embeddings = self.word_embeddings(captions) # embeddings new shape : (batch_size, captions length -1, embed_size)
         
@@ -82,14 +84,16 @@ class DecoderRNN(nn.Module):
         sampled_ids = []
         inputs = features.unsqueeze(1)
         inputs = inputs.reshape((1,1,inputs.shape[0]))
-        for _ in range(30):
-            hiddens, states = self.lstm(inputs, states)           # hiddens: (batch_size, 1, hidden_size)
-            outputs = self.linear(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
-            _, predicted = outputs.max(1)                     # predicted: (batch_size)
-            sampled_ids.append(predicted)
-            inputs = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
-            inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
-        sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
+        self.init_hidden(1)
+        with torch.no_grad(): 
+            for _ in range(30):
+                hiddens, states = self.lstm(inputs, states)           # hiddens: (batch_size, 1, hidden_size)
+                outputs = self.linear(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
+                _, predicted = outputs.max(1)                     # predicted: (batch_size)
+                sampled_ids.append(predicted)
+                inputs = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
+                inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
+            sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
         return sampled_ids
 
 def save(self, file_name):
@@ -112,7 +116,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         best_epoch = -1  # the epoch in which the best accuracy above was computed
 
         encoder = EncoderCNN(50)
-        decoder = DecoderRNN(100,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
+        decoder = DecoderRNN(2048,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
     
         # ensuring the classifier is in 'train' mode (pytorch)
         decoder.train()
@@ -129,9 +133,9 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
             epoch_num_train_examples = 0
 
             for images,captions,captions_length in train_set:
-                # zeroing the memory areas that were storing previously computed gradients
                 decoder.zero_grad()
-                encoder.zero_grad()
+                encoder.zero_grad() 
+                # zeroing the memory areas that were storing previously computed gradients
                 batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size')
                 epoch_num_train_examples += batch_num_train_examples
 
@@ -147,8 +151,10 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 targets = pack_padded_sequence(captions, captions_length, batch_first=True)[0]
                 
                 # computing the loss function
-                loss = criterion(outputs, targets)
-
+                try:
+                    loss = criterion(outputs, targets)
+                except Exception as ex:
+                    print(ex)
                 # computing gradients and updating the network weights
                 loss.backward()  # computing gradients
                 optimizer.step()  # updating weights
@@ -157,6 +163,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 torch.save(decoder.state_dict(),".saved/decoder.pt")
                 features = encoder(images)
                 caption = decoder.sample(features[0])
+                print(v_enriched.rev_translate(captions))
                 print(v_enriched.rev_translate(caption))
                 # computing the performance of the net on the current training mini-batch
                 # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
@@ -198,14 +205,14 @@ if __name__ == "__main__":
     from PreProcess import PreProcess
     from Dataset import MyDataset
     from torch.utils.data import DataLoader
-    ds = MyDataset("./dataset/flickr30k_images/flickr30k_images")
-    df = ds.get_fraction_of_dataset(percentage=10)
+    ds = MyDataset("./dataset", percentage=2)
+    df = ds.get_fraction_of_dataset(percentage=100)
     
     # use dataloader facilities which requires a preprocessed dataset
     v = Vocabulary(verbose=True)    
     df_pre_processed,v_enriched = PreProcess.DatasetForTraining.process(dataset=df,vocabulary=v)
     
-    dataloader = DataLoader(df, batch_size=30,
-                        shuffle=False, num_workers=0, collate_fn=df.pack_minibatch)
+    dataloader = DataLoader(df, batch_size=10,
+                        shuffle=True, num_workers=0, collate_fn=df.pack_minibatch)
     
     train(dataloader, dataloader, 1e-2, 10, v_enriched)
