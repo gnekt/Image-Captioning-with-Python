@@ -116,7 +116,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         best_epoch = -1  # the epoch in which the best accuracy above was computed
 
         encoder = EncoderCNN(50)
-        decoder = DecoderRNN(2048,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
+        decoder = DecoderRNN(2048,0,len(vocabulary.word2id.keys()),vocabulary.embeddings)
         
         encoder.to(device)
         decoder.to(device)
@@ -165,8 +165,8 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 torch.save(decoder.state_dict(),".saved/decoder.pt")
                 features = encoder(images)
                 caption = decoder.sample(features[0])
-                print(v_enriched.rev_translate(captions))
-                print(v_enriched.rev_translate(caption))
+                print(vocabulary.rev_translate(captions))
+                print(vocabulary.rev_translate(caption))
                 # computing the performance of the net on the current training mini-batch
                 # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
                 #     self.net.eval()  # switching to eval mode

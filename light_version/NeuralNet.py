@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 from torch.nn.utils.rnn import pack_padded_sequence
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 class EncoderCNN(nn.Module):
     def __init__(self, embed_size):
@@ -14,7 +15,13 @@ class EncoderCNN(nn.Module):
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
         self.embed = nn.Linear(resnet.fc.in_features, embed_size) # attach a linear layer ()
-
+        self.init_weights()
+        
+    def init_weights(self):
+        # weight init, inspired by tutorial
+        self.embed.weight.data.normal_(0,0.02)
+        self.embed.bias.data.fill_(0)
+        
     def forward(self, images):
         with torch.no_grad():
             features = self.resnet(images) 
@@ -69,7 +76,7 @@ class DecoderRNN(nn.Module):
         # Stack the features and captions
         embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1) # embeddings new shape : (batch_size, caption length, embed_size)
         
-        packed = pack_padded_sequence(embeddings, caption_lengths, batch_first=True) 
+        packed = pack_padded_sequence(embeddings, caption_lengths.cpu(), batch_first=True) 
         # Get the output and hidden state by passing the lstm over our word embeddings
         # the lstm takes in our embeddings and hidden state
         lstm_out, self.hidden = self.lstm(packed) # lstm_out shape : (batch_size, caption length, hidden_size)
@@ -109,14 +116,14 @@ def load(self, file_name):
         
 def train(train_set, validation_set, lr, epochs, vocabulary):
         device = torch.device("cuda:0")
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss().cuda()
         
         # initializing some elements
         best_val_acc = -1.  # the best accuracy computed on the validation data
         best_epoch = -1  # the epoch in which the best accuracy above was computed
 
         encoder = EncoderCNN(50)
-        decoder = DecoderRNN(2500,0,len(vocabulary.word2id.keys()),vocabulary.embeddings)
+        decoder = DecoderRNN(2048,0,len(vocabulary.word2id.keys()),vocabulary.embeddings)
         
         encoder.to(device)
         decoder.to(device)
@@ -125,7 +132,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         decoder.train()
 
         # creating the optimizer
-        optimizer = torch.optim.Adam(list(decoder.parameters()), lr)
+        optimizer = torch.optim.Adam(list(decoder.parameters()) + list(encoder.embed.parameters()), lr)
 
         # loop on epochs!
         for e in range(0, epochs):
@@ -138,18 +145,22 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
             for images,captions,captions_length in train_set:
                 decoder.zero_grad()
                 encoder.zero_grad() 
+                
                 # zeroing the memory areas that were storing previously computed gradients
                 batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size')
                 epoch_num_train_examples += batch_num_train_examples
-
+                
+                lengths = Variable(torch.LongTensor(captions_length))
+                    
+                lengths = lengths.to(device)
                 images = images.to(device)
                 captions = captions.to(device)
 
                 # computing the network output on the current mini-batch
                 features = encoder(images)
-                outputs = decoder(features, captions,captions_length)
+                outputs = decoder(features, captions,lengths)
                 
-                targets = pack_padded_sequence(captions, captions_length, batch_first=True)[0]
+                targets = pack_padded_sequence(captions, lengths.cpu(), batch_first=True)[0]
                 
                 # computing the loss function
                 try:
@@ -162,10 +173,13 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
 
                 print(f"mini-batch:\tloss={loss.item():.4f}")
                 torch.save(decoder.state_dict(),".saved/decoder.pt")
-                features = encoder(images)
-                caption = decoder.sample(features[0])
-                print(vocabulary.rev_translate(captions))
-                print(vocabulary.rev_translate(caption))
+                with torch.no_grad():
+                    encoder.eval()
+                    features = encoder(images)
+                    caption = decoder.sample(features[0])
+                    print(vocabulary.rev_translate(captions))
+                    print(vocabulary.rev_translate(caption))
+                    encoder.train()
                 # computing the performance of the net on the current training mini-batch
                 # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
                 #     self.net.eval()  # switching to eval mode
@@ -205,12 +219,12 @@ if __name__ == "__main__":
     from Vocabulary import Vocabulary
     from Dataset import MyDataset
     from torch.utils.data import DataLoader
-    ds = MyDataset("./dataset", percentage=2)
+    ds = MyDataset("./dataset", percentage=10)
     
     # use dataloader facilities which requires a preprocessed dataset
     v = Vocabulary(ds,reload=True)    
     
-    dataloader = DataLoader(ds, batch_size=20,
+    dataloader = DataLoader(ds, batch_size=15,
                         shuffle=True, num_workers=0, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
-    train(dataloader, dataloader, 1e-5, 10, v)
+    train(dataloader, dataloader, 1e-3, 10, v)

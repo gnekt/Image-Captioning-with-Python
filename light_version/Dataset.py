@@ -42,7 +42,7 @@ class MyDataset(Dataset):
         if not os.path.isdir(directory_of_data):
             raise ValueError(f"{directory_of_data} is not a directory!")
         
-        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]]
+        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]].sample(frac=1)
         self._dataset = _temp_dataset.head(int(len(_temp_dataset)*(percentage/100)))
         self.directory_of_data = directory_of_data
         
