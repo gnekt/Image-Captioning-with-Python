@@ -101,16 +101,24 @@ class MyDataset(Dataset):
     
     def pack_minibatch(self, data):
         
+        # Sort a data list by caption length (descending order).
+        data.sort(key=lambda x: len(x[1]), reverse=True)
+    
         images, captions = zip(*data)
-        captions = nn.utils.rnn.pad_sequence(captions, padding_value=0)
-        return torch.stack(images,dim=0),captions.reshape((captions.shape[1],-1)).type(torch.LongTensor) # Images are a tuple of images we need a tensorial form so..stack it! 
+        
+        # Merge images (from tuple of 3D tensor to 4D tensor).
+        images = torch.stack(images, 0)
+        
+        caption_lengths = [len(caption) for caption in captions]
+        captions = nn.utils.rnn.pad_sequence(captions, padding_value=0, batch_first=True)
+        return images,captions.type(torch.LongTensor),caption_lengths 
 #-------------------------------
 # Usage
 
 if __name__ == "__main__":
     from Vocabulary import Vocabulary
     from PreProcess import PreProcess
-    ds = MyDataset("./dataset")
+    ds = MyDataset("./dataset/flickr30k_images/flickr30k_images")
     df = ds.get_fraction_of_dataset(percentage=10)
     print("pippo")
     
@@ -121,5 +129,5 @@ if __name__ == "__main__":
     dataloader = DataLoader(df, batch_size=4,
                         shuffle=False, num_workers=0, collate_fn=df.pack_minibatch)
     
-    for i_batch,[images,captions] in enumerate(dataloader):
+    for i_batch,images,captions in enumerate(dataloader):
         print(i_batch, captions)

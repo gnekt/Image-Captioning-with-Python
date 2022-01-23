@@ -42,7 +42,7 @@ class PreProcessImageForTraining(ABCPreProcess):
         """
         operations = transforms.Compose([
                 transforms.RandomResizedCrop(parameters["crop"]["size"], scale=parameters["crop"]["scale"], ratio=parameters["crop"]["ratio"]), # Crop a random portion of image and resize it to a given size.
-                transforms.RandomHorizontalFlip(p=0.5), # Horizontally flip the given image randomly with a given probability.
+                transforms.RandomHorizontalFlip(p=0), # Horizontally flip the given image randomly with a given probability.
                 transforms.ToTensor(), # Convert a PIL Image or numpy.ndarray to tensor.  (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] 
                 transforms.Normalize(mean=parameters["mean"], std=parameters["std_dev"]),
         ])
