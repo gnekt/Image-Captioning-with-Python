@@ -16,6 +16,7 @@ class EncoderCNN(nn.Module):
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
         self.linear = nn.Linear(resnet.fc.in_features, embed_size) 
+        self.norm = nn.BatchNorm1d(embed_size, momentum=0.01)
         
     def init_weights(self):
         # weight init, inspired by tutorial
@@ -27,7 +28,7 @@ class EncoderCNN(nn.Module):
         features = self.resnet(images) 
         features = features.reshape(features.size(0), -1)
         features = self.linear(features)
-        return features
+        return self.norm(features)
     
 class DecoderRNN(nn.Module):
     def __init__(self, hidden_size, padding_index, vocab_size, embeddings ):
@@ -52,15 +53,8 @@ class DecoderRNN(nn.Module):
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
         self.linear = nn.Linear(hidden_size, vocab_size)                     
+        self.log_soft_max = nn.LogSoftmax() 
 
-    def init_hidden(self, batch_size):
-        """ At the start of training, we need to initialize a hidden state;
-        there will be none because the hidden state is formed based on previously seen data.
-        So, this function defines a hidden state with all zeroes
-        The axes semantics are (num_layers, batch_size, hidden_dim)
-        """
-        return (torch.zeros((1, batch_size, self.hidden_size)), \
-                torch.zeros((1, batch_size, self.hidden_size)))
         
     
     def forward(self, features, captions,caption_lengths):
@@ -68,7 +62,6 @@ class DecoderRNN(nn.Module):
         
         # Initialize the hidden state
         batch_size = features.shape[0] # features is of shape (batch_size, embed_size)
-        self.hidden = self.init_hidden(batch_size)
         
         # Create embedded word vectors for each word in the captions
         embeddings = self.word_embeddings(captions) # embeddings new shape : (batch_size, captions length -1, embed_size)
@@ -78,27 +71,28 @@ class DecoderRNN(nn.Module):
         
         # Get the output and hidden state by passing the lstm over our word embeddings
         # the lstm takes in our embeddings and hidden state
-        lstm_out, self.hidden = self.lstm(inputs) # lstm_out shape : (batch_size, caption length, hidden_size)
+        lstm_out, self.hidden = self.lstm(inputs) # lstm_out shape : (batch_size, caption length, hidden_size), Defaults to zeros if (h_0, c_0) is not provided.
 
         # Fully connected layer
         outputs = self.linear(lstm_out) # outputs shape : (batch_size, caption length, vocab_size)
 
-        return outputs
+        return self.log_soft_max(outputs,dim=3)
     
-    def sample(self, features, states=None):
+    def sample(self, features):
         """Generate captions for given image features using greedy search."""
         sampled_ids = []
         inputs = features.unsqueeze(1)
         inputs = inputs.reshape((1,1,inputs.shape[0]))
-        self.init_hidden(1)
         with torch.no_grad(): 
             for _ in range(30):
-                hiddens, states = self.lstm(inputs, states)           # hiddens: (batch_size, 1, hidden_size)
+                hiddens, _ = self.lstm(inputs)           # hiddens: (batch_size, 1, hidden_size)
                 outputs = self.linear(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
-                _, predicted = outputs.max(1)                     # predicted: (batch_size)
+                _, predicted = self.log_soft_max(outputs).max(1)                     # predicted: (batch_size)
                 sampled_ids.append(predicted)
                 inputs = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
                 inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
+                if predicted == 2:
+                    break
             sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
         return sampled_ids
 
@@ -115,7 +109,7 @@ def load(self, file_name):
         
 def train(train_set, validation_set, lr, epochs, vocabulary):
         device = torch.device("cuda:0")
-        criterion = nn.CrossEntropyLoss(ignore_index=0).cuda()
+        criterion = nn.NLLLoss(ignore_index=0,reduction='sum').cuda()
         
         # initializing some elements
         best_val_acc = -1.  # the best accuracy computed on the validation data
@@ -131,7 +125,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         decoder.train()
 
         # creating the optimizer
-        optimizer = torch.optim.Adam(list(decoder.parameters()) + list(encoder.linear.parameters()), lr)
+        optimizer = torch.optim.Adam(list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.norm.parameters()), lr)
 
         # loop on epochs!
         for e in range(0, epochs):
@@ -152,14 +146,14 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                     
                 lengths = lengths.to(device)
                 images = images.to(device)
-                captions = captions.to(device)
+                captions = captions.to(device) # captions > (B, L)
 
                 # computing the network output on the current mini-batch
                 features = encoder(images)
-                outputs = decoder(features, captions,lengths)[:,:-1,:]
+                outputs = decoder(features, captions,lengths)[:,:-1,:] # outputs > (B, L, |V|) ; [:,:-1,:] we don't care the prediction with <EOS> as input
                 
                 
-               
+                # (B, L, |V|) -> (B * L, |V|) and captions > (B * L)
                 loss = criterion(outputs.reshape((-1,outputs.shape[2])), captions.reshape(-1))
                 
                 # computing gradients and updating the network weights
@@ -167,50 +161,15 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 optimizer.step()  # updating weights
 
                 print(f"mini-batch:\tloss={loss.item():.4f}")
-                torch.save(decoder.state_dict(),".saved/decoder.pt")
-                with torch.no_grad():
-                    decoder.eval()
-                    encoder.eval()
-                    features = encoder(images)
-                    caption = decoder.sample(features[0])
-                    print(vocabulary.rev_translate(captions))
-                    print(vocabulary.rev_translate(caption))
-                    decoder.train()
-                    encoder.train()
-                    
-                # computing the performance of the net on the current training mini-batch
-                # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
-                #     self.net.eval()  # switching to eval mode
-
-                #     # computing performance
-                #     batch_train_acc = self.__performance(outputs, y)
-
-                #     # accumulating performance measures to get a final estimate on the whole training set
-                #     epoch_train_acc += batch_train_acc * batch_num_train_examples
-
-                #     # accumulating other stats
-                #     epoch_train_loss += loss.item() * batch_num_train_examples
-
-                #     self.net.train()  # going back to train mode
-
-                #     # printing (mini-batch related) stats on screen
-                #     print("  mini-batch:\tloss={0:.4f}, tr_acc={1:.2f}".format(loss.item(), batch_train_acc))
-
-            # val_acc = self.eval_classifier(validation_set)
-
-            # # saving the model if the validation accuracy increases
-            # if val_acc > best_val_acc:
-            #     best_val_acc = val_acc
-            #     best_epoch = e + 1
-            #     self.save("classifier.pth")
-
-            # epoch_train_loss /= epoch_num_train_examples
-
-            # # printing (epoch related) stats on screen
-            # print(("epoch={0}/{1}:\tloss={2:.4f}, tr_acc={3:.2f}, val_acc={4:.2f}"
-            #        + (", BEST!" if best_epoch == e + 1 else ""))
-            #       .format(e + 1, epochs, epoch_train_loss,
-            #               epoch_train_acc / epoch_num_train_examples, val_acc))
+            with torch.no_grad():
+                decoder.eval()
+                encoder.eval()
+                features = encoder(images)
+                caption = decoder.sample(features[0])
+                print(vocabulary.rev_translate(captions))
+                print(vocabulary.rev_translate(caption))
+                decoder.train()
+                encoder.train()
 
 # Example of usage
 if __name__ == "__main__":
@@ -223,6 +182,6 @@ if __name__ == "__main__":
     v = Vocabulary(ds,reload=True)    
     
     dataloader = DataLoader(ds, batch_size=15,
-                        shuffle=True, num_workers=0, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
+                        shuffle=True, num_workers=4, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
     train(dataloader, dataloader, 1e-3, 10, v)
