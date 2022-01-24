@@ -77,8 +77,8 @@ class Vocabulary():
             word_sequence (str): [description]
         """
         # Check if the Vocabulary is enriched with all the possible word outside glove, taken from the dataset.
-        if not self.enriched:
-            warnings.warn("The vocabulary is not enriched with dataset words that could be not in glove, pay attention to what you want to do with this representation.")
+        # if not self.enriched:
+        #     warnings.warn("The vocabulary is not enriched with dataset words that could be not in glove, pay attention to what you want to do with this representation.")
         
         # Initialize the translator
         _sequence = torch.zeros(len(word_sequence)+2, dtype=torch.int32) # +2 because of <SOS> and <EOS> token
@@ -101,7 +101,7 @@ class Vocabulary():
             word_sequence (str): [description]
         """
         # Check if the Vocabulary is enriched with all the possible word outside glove, taken from the dataset.
-        return [list(self.word2id.keys())[idx] for idx in words_id[0,:].tolist()]   # word_id (1,caption_length)
+        return [list(self.word2id.keys())[idx] for idx in words_id[:].tolist()]   # word_id (1,caption_length)
     
     
     def __len__(self):

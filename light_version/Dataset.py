@@ -36,6 +36,10 @@ class MyDataset(Dataset):
         Args:
             directory_of_data (str): [description]
         """
+        if already_computed_dataframe is not None:
+            self.directory_of_data = directory_of_data
+            self._dataset = already_computed_dataframe
+            return
         
         if not os.path.exists(directory_of_data):
             raise ValueError(f"{directory_of_data} not Exist!")
@@ -49,7 +53,7 @@ class MyDataset(Dataset):
     def get_fraction_of_dataset(self, percentage: int): 
         _temp_df_moved = self._dataset.head(int(len(self._dataset)*(percentage/100)))
         _temp_df_copy = _temp_df_moved.copy()
-        return MyDataset(already_computed_dataframe=_temp_df_copy)
+        return MyDataset(directory_of_data=self.directory_of_data, already_computed_dataframe=_temp_df_copy)
     
     def get_all_distinct_words_in_dataset(self):
         words = []
@@ -89,8 +93,10 @@ class MyDataset(Dataset):
         
         caption_lengths = [len(caption) for caption in captions]
         captions_ids = [vocabulary.translate(caption) for caption in captions]
+        captions_withoud_start_id = [vocabulary.translate(caption)[1:] for caption in captions]
         captions = nn.utils.rnn.pad_sequence(captions_ids, padding_value=0, batch_first=True)
-        return images,captions.type(torch.LongTensor),torch.tensor(caption_lengths) 
+        captions_withoud_start_id = nn.utils.rnn.pad_sequence(captions_withoud_start_id, padding_value=0, batch_first=True)
+        return images,captions_withoud_start_id.type(torch.LongTensor),torch.tensor(caption_lengths),captions
     
     def pack_minibatch_evaluation(self, data):
         
