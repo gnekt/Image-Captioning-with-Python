@@ -108,7 +108,7 @@ def load(self, file_name):
     self.net.load_state_dict(torch.load(file_name, map_location=self.device))
         
 def train(train_set, validation_set, lr, epochs, vocabulary):
-        
+        device = torch.device("cuda:0")
         criterion = nn.CrossEntropyLoss()
         
         # initializing some elements
@@ -116,8 +116,11 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         best_epoch = -1  # the epoch in which the best accuracy above was computed
 
         encoder = EncoderCNN(50)
-        decoder = DecoderRNN(2048,0,len(v_enriched.word2id.keys()),v_enriched.embeddings)
-    
+        decoder = DecoderRNN(2048,0,len(vocabulary.word2id.keys()),vocabulary.embeddings)
+        
+        encoder.to(device)
+        decoder.to(device)
+        
         # ensuring the classifier is in 'train' mode (pytorch)
         decoder.train()
 
@@ -139,10 +142,9 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size')
                 epoch_num_train_examples += batch_num_train_examples
 
-                # X = .to(self.device)
-                # X_rev = X_rev.to(self.device)
-                # X_len = X_len.to(self.device)
-                # y = y.to(self.device)
+                images = images.to(device)
+                captions_length = captions_length.to(device)
+                targets = targets.to(device)
 
                 # computing the network output on the current mini-batch
                 features = encoder(images)
@@ -163,8 +165,8 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 torch.save(decoder.state_dict(),".saved/decoder.pt")
                 features = encoder(images)
                 caption = decoder.sample(features[0])
-                print(v_enriched.rev_translate(captions))
-                print(v_enriched.rev_translate(caption))
+                print(vocabulary.rev_translate(captions))
+                print(vocabulary.rev_translate(caption))
                 # computing the performance of the net on the current training mini-batch
                 # with torch.no_grad():  # keeping these operations out of those for which we will compute the gradient
                 #     self.net.eval()  # switching to eval mode
