@@ -9,7 +9,7 @@ import random
 
 device = "cuda:0"
 class EncoderCNN(nn.Module):
-    def __init__(self, embed_size):
+    def __init__(self, projection_size):
         super(EncoderCNN, self).__init__()
         resnet = models.resnet50(pretrained=True)
         for param in resnet.parameters():
@@ -17,88 +17,94 @@ class EncoderCNN(nn.Module):
         
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
-        self.linear = nn.Linear(resnet.fc.in_features, 50) 
+        self.linear = nn.Linear(resnet.fc.in_features, projection_size) 
         
     def forward(self, images):
-        
         features = self.resnet(images) 
-        features = features.reshape(features.size(0), -1)
+        features = features.reshape(features.size(0), -1) # (Batch Size, Embedding Dim.)
         features = self.linear(features)
         return features
     
 class DecoderRNN(nn.Module):
-    def __init__(self, hidden_size, padding_index, vocab_size, embeddings ):
-        """Set the hyper-parameters and build the layers."""
+    def __init__(self, hidden_size, padding_index, vocab_size, embedding_size):
+        """[summary]
+
+        Args:
+            hidden_size ([type]): [description]
+            padding_index ([type]): [description]
+            vocab_size ([type]): [description]
+            embedding_size ([type]): [description]
+        """
         super(DecoderRNN, self).__init__()
-        # Keep track of hidden_size for initialization of hidden state
-        self.hidden_size = hidden_size
-        
+    
         # Embedding layer that turns words into a vector of a specified size
-        self.word_embeddings = nn.Embedding.from_pretrained(embeddings, freeze=True, padding_idx = 0)
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=padding_index)
         
         # The LSTM takes embedded word vectors (of a specified size) as input
         # and outputs hidden states of size hidden_dim
-        self.lstm = nn.LSTM(input_size=50, \
-                            hidden_size=1024, # LSTM hidden units 
-                            num_layers=1, # number of LSTM layer
-                            batch_first=True,  # input & output will have batch size as 1st dimension
-                            dropout=0, # Not applying dropout 
-                            bidirectional=False, # unidirectional LSTM
-                           )
+        self.lstm_unit = torch.nn.LSTMCell(embedding_size, hidden_size)
         
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
-        self.linear_1 = nn.Linear(1024, vocab_size)
+        self.linear_1 = nn.Linear(hidden_size, vocab_size)
+                
 
-    def init_hidden_state(self, encoder_out):
-        """
-        Creates the initial hidden and cell states for the decoder's LSTM based on the encoded images.
-        :param encoder_out: encoded images, a tensor of dimension (batch_size, num_pixels, encoder_dim)
-        :return: hidden state, cell state
-        """
-        
-        h = encoder_out.reshape((1,encoder_out.shape[0],encoder_out.shape[1]))  # (batch_size, decoder_dim)
-        c = encoder_out.reshape((1,encoder_out.shape[0],encoder_out.shape[1]))
-        return h, c
-        
-    
-    def forward(self, features, captions,caption_lengths):
-        """ Define the feedforward behavior of the model """      
+    def forward(self, features, captions):
+        """[summary]
+
+        Args:
+            features (torch.tensor(batch_size, hidden_size)): [description]
+            captions (torch.tensor(batch_size, max_captions_length, word_embedding)): [description]
+
+        Returns:
+            [torch.tensor(batch_size, max_captions_length, vocab_size)]: [description]
+        """             
         
         # Initialize the hidden state
         batch_size = features.shape[0] # features is of shape (batch_size, embed_size)
         
+        embedding_size = features.shape[1] 
         # Create embedded word vectors for each word in the captions
         inputs = self.word_embeddings(captions) # embeddings new shape : (batch_size, captions length, embed_size)
         
-       
-        # Get the output and hidden state by passing the lstm over our word embeddings
-        # the lstm takes in our embeddings and hidden state
-        #h, c = self.init_hidden_state(features) 
-        inputs = torch.cat((features.unsqueeze(1), inputs), dim=1)
-        lstm_out, self.hidden = self.lstm(inputs) # lstm_out shape : (batch_size, caption length, hidden_size), Defaults to zeros if (h_0, c_0) is not provided.
+        # Feed LSTMCell with image features and retrieve the state
         
-        lstm_out = lstm_out[:,1:,:]
-        # Fully connected layers
-        outputs = self.linear_1(lstm_out) # outputs shape : (batch_size, caption length, vocab_size)
+        _h, _c = self.lstm_unit(features) # _h : (Batch size, Hidden size)
         
-        return outputs
+        # Deterministict <SOS> Output as first word of the caption :)
+        start = torch.zeros(self.word_embeddings.num_embeddings)
+        start[1] = 1
+        outputs = start.repeat(batch_size,1,1).to(torch.device(device)) # Bulk insert of <SOS> embeddings to all the elements of the batch 
+          
+        
+        
+        # How it works the loop?
+        # For each time step t \in {0, N-1}, where N is the caption length 
+        
+        # Since the sequences are padded, how the forward is performed? Since the <EOS> don't need to be feeded as input?
+        # The assumption is that the captions are of lenght N-1, so the captions provide by external as input are without <EOS> token
+        
+        for idx in range(0,inputs.shape[1]): 
+            _h, _c = self.lstm_unit(inputs[:,idx,:], (_h,_c))
+            _outputs = self.linear_1(_h)
+            outputs = torch.cat((outputs,_outputs.unsqueeze(1)),dim=1)
+        
+        return outputs # (Batch Size, N, |Vocabulary|)
     
     def sample(self, features):
         """Generate captions for given image features using greedy search."""
        
         sampled_ids = []
-        input = self.word_embeddings(torch.LongTensor([1]).to(torch.device(device))).reshape((1,1,-1))
+        input = self.word_embeddings(torch.LongTensor([1]).to(torch.device(device))).reshape((1,-1))
         with torch.no_grad(): 
-            print(features.shape)
-            _ ,state = self.lstm(features.reshape(1,1,-1))
+            _h ,_c = self.lstm_unit(features.unsqueeze(0))
             for _ in range(15):
-                hiddens, state = self.lstm(input, state)           # hiddens: (batch_size, 1, hidden_size)
-                outputs = self.linear_1(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
-                _, predicted = F.softmax(outputs,dim=1).cuda.max(1)  if device == "cuda" else   F.softmax(outputs,dim=1).max(1)                # predicted: (batch_size)
+                _h, _c = self.lstm_unit(input, (_h ,_c))           # _h: (1, 1, hidden_size)
+                outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
+                _ , predicted = F.softmax(outputs,dim=1).cuda().max(1)  if device == "cuda" else   F.softmax(outputs,dim=1).max(1)                # predicted: (batch_size)
                 sampled_ids.append(predicted)
-                inputs = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
-                input = inputs.unsqueeze(1).to(torch.device(device))                       # inputs: (batch_size, 1, embed_size)
+                input = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
+                input = input.to(torch.device(device))                       # inputs: (batch_size, 1, embed_size)
                 if predicted == 2:
                     break
             sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
@@ -123,8 +129,8 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
         best_val_acc = -1.  # the best accuracy computed on the validation data
         best_epoch = -1  # the epoch in which the best accuracy above was computed
 
-        encoder = EncoderCNN(50)
-        decoder = DecoderRNN(1024,0,len(vocabulary.word2id.keys()),vocabulary.embeddings)
+        encoder = EncoderCNN(512)
+        decoder = DecoderRNN(512,0,len(vocabulary.word2id.keys()),512)
         
         encoder.to(device_t)
         decoder.to(device_t)
@@ -143,42 +149,40 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
             epoch_train_loss = 0.
             epoch_num_train_examples = 0
 
-            for images,captions,captions_length,captions_training in train_set:
+            for images,captions_training_ids,captions_target_ids in train_set:
                 optimizer.zero_grad() 
                 
                 # zeroing the memory areas that were storing previously computed gradients
                 batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size')
                 epoch_num_train_examples += batch_num_train_examples
                 
-                lengths = Variable(torch.LongTensor(captions_length))
-                    
-                lengths = lengths.to(device_t)
+                
                 images = images.to(device_t)
-                captions = captions.to(device_t) # captions > (B, L)
-                captions_training = captions_training.to(device_t) # captions > (B, |L|-1) without end token
+                captions_training_ids = captions_training_ids.to(device_t) # captions > (B, L)
+                captions_target_ids = captions_target_ids.to(device_t) # captions > (B, |L|-1) without end token
 
                 # computing the network output on the current mini-batch
                 features = encoder(images)
-                outputs = decoder(features, captions,lengths) # outputs > (B, L, |V|); 
+                outputs = decoder(features, captions_training_ids) # outputs > (B, L, |V|); 
                 
                 # (B, L, |V|) -> (B * L, |V|) and captions > (B * L)
-                loss = criterion(outputs.reshape((-1,outputs.shape[2])), captions.reshape(-1))
+                loss = criterion(outputs.reshape((-1,outputs.shape[2])), captions_target_ids.reshape(-1))
                 
                 # computing gradients and updating the network weights
                 loss.backward()  # computing gradients
                 optimizer.step()  # updating weights
 
                 print(f"mini-batch:\tloss={loss.item():.4f}")
-            with torch.no_grad():
-                decoder.eval()
-                encoder.eval()
-                features = encoder(images)
-                numb = random.randint(0,2)
-                caption = decoder.sample(features[numb])
-                print(vocabulary.rev_translate(captions[numb]))
-                print(vocabulary.rev_translate(caption[0]))
-                decoder.train()
-                encoder.train()
+                with torch.no_grad():
+                    decoder.eval()
+                    encoder.eval()
+                    features = encoder(images)
+                    numb = random.randint(0,2)
+                    caption = decoder.sample(features[numb])
+                    print(vocabulary.rev_translate(captions_target_ids[numb]))
+                    print(vocabulary.rev_translate(caption[0]))
+                    decoder.train()
+                    encoder.train()
 
 # Example of usage
 if __name__ == "__main__":

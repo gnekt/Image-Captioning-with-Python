@@ -117,6 +117,7 @@ class MyDataset(Dataset):
         images = torch.stack(images, 0)
         
         caption_lengths = [len(caption) for caption in captions]
+        captions
         captions = nn.utils.rnn.pad_sequence(captions, padding_value=0, batch_first=True)
         return images,captions.type(torch.LongTensor),caption_lengths 
         
