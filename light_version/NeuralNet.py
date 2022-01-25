@@ -17,7 +17,7 @@ class EncoderCNN(nn.Module):
         
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
-        self.linear = nn.Linear(resnet.fc.in_features, 1024) 
+        self.linear = nn.Linear(resnet.fc.in_features, 50) 
         
     def forward(self, images):
         
@@ -48,13 +48,7 @@ class DecoderRNN(nn.Module):
         
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
-        self.linear_1 = nn.Linear(1024, vocab_size + 4096)
-        self.relu_1 = nn.ReLU()
-        self.linear_2 = nn.Linear(vocab_size + 4096, vocab_size + 2048)
-        self.relu_2 = nn.ReLU()
-        self.linear_3 = nn.Linear(vocab_size + 2048, vocab_size + 1024)
-        self.relu_3 = nn.ReLU()
-        self.linear_4 = nn.Linear(vocab_size + 1024, vocab_size)
+        self.linear_1 = nn.Linear(1024, vocab_size)
 
     def init_hidden_state(self, encoder_out):
         """
@@ -80,18 +74,14 @@ class DecoderRNN(nn.Module):
        
         # Get the output and hidden state by passing the lstm over our word embeddings
         # the lstm takes in our embeddings and hidden state
-        h, c = self.init_hidden_state(features) 
+        #h, c = self.init_hidden_state(features) 
+        inputs = torch.cat((features.unsqueeze(1), inputs), dim=1)
+        lstm_out, self.hidden = self.lstm(inputs) # lstm_out shape : (batch_size, caption length, hidden_size), Defaults to zeros if (h_0, c_0) is not provided.
         
-        lstm_out, self.hidden = self.lstm(inputs, (h, c)) # lstm_out shape : (batch_size, caption length, hidden_size), Defaults to zeros if (h_0, c_0) is not provided.
-
+        lstm_out = lstm_out[:,1:,:]
         # Fully connected layers
         outputs = self.linear_1(lstm_out) # outputs shape : (batch_size, caption length, vocab_size)
-        outputs = self.relu_1(outputs)
-        outputs = self.linear_2(outputs)
-        outputs = self.relu_2(outputs)
-        outputs = self.linear_3(outputs)
-        outputs = self.relu_3(outputs)
-        outputs = self.linear_4(outputs)
+        
         return outputs
     
     def sample(self, features):
@@ -101,16 +91,10 @@ class DecoderRNN(nn.Module):
         input = self.word_embeddings(torch.LongTensor([1]).to(torch.device(device))).reshape((1,1,-1))
         with torch.no_grad(): 
             print(features.shape)
-            state = self.init_hidden_state(features.reshape((1,-1)))
+            _ ,state = self.lstm(features.reshape(1,1,-1))
             for _ in range(15):
                 hiddens, state = self.lstm(input, state)           # hiddens: (batch_size, 1, hidden_size)
                 outputs = self.linear_1(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
-                outputs = self.relu_1(outputs)
-                outputs = self.linear_2(outputs)
-                outputs = self.relu_2(outputs)
-                outputs = self.linear_3(outputs)
-                outputs = self.relu_3(outputs)
-                outputs = self.linear_4(outputs)
                 _, predicted = F.softmax(outputs,dim=1).cuda.max(1)  if device == "cuda" else   F.softmax(outputs,dim=1).max(1)                # predicted: (batch_size)
                 sampled_ids.append(predicted)
                 inputs = self.word_embeddings(predicted)                       # inputs: (batch_size, embed_size)
@@ -189,7 +173,7 @@ def train(train_set, validation_set, lr, epochs, vocabulary):
                 decoder.eval()
                 encoder.eval()
                 features = encoder(images)
-                numb = random.randint(0,9)
+                numb = random.randint(0,2)
                 caption = decoder.sample(features[numb])
                 print(vocabulary.rev_translate(captions[numb]))
                 print(vocabulary.rev_translate(caption[0]))
@@ -202,11 +186,11 @@ if __name__ == "__main__":
     from Dataset import MyDataset
     from torch.utils.data import DataLoader
     ds = MyDataset("./dataset", percentage=1)
-    ds = ds.get_fraction_of_dataset(percentage=12)
+    ds = ds.get_fraction_of_dataset(percentage=100)
     # use dataloader facilities which requires a preprocessed dataset
     v = Vocabulary(ds,reload=True)    
     
-    dataloader = DataLoader(ds, batch_size=10,
+    dataloader = DataLoader(ds, batch_size=30,
                         shuffle=True, num_workers=4, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
     train(dataloader, dataloader, 1e-3, 400, v)
