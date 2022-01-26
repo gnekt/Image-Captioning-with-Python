@@ -68,7 +68,7 @@ class MyDataset(Dataset):
     
     def __getitem__(self, idx):
         
-        image, caption = Image.open(f"{self.directory_of_data}/images/{self._dataset.iloc[idx]['image_name']}").convert('RGB'), \
+        image, caption = Image.open(f"{self.directory_of_data}/flickr30k_images/{self._dataset.iloc[idx]['image_name']}").convert('RGB'), \
                             re.findall("[\\w]+|\.|\,", self._dataset.iloc[idx]["comment"].lower())
         
         return image, caption 

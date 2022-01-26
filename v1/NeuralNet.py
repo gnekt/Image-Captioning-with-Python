@@ -1,3 +1,11 @@
+#####################################################
+## DISCLAIMER: IL CODICE E` ESSENZIALMENTE HARDCODED, SOLO DI TESTING, NON RISPETTA I CANONI DELLO SGD, CERCO DI CAPIRE SOLO SE FUNZIONA! 
+# NON GIUDICARLO GENTILMENTE, SO CHE NON VA` FATTO COSI`, POI LO SISTEMO :)
+##
+##
+##  pip install torch==1.3.0+cu100 torchvision==0.4.1+cu100 -f https://download.pytorch.org/whl/torch_stable.html
+
+
 import torch
 import torch.nn as nn
 import torchvision.models as models
@@ -189,12 +197,12 @@ if __name__ == "__main__":
     from Vocabulary import Vocabulary
     from Dataset import MyDataset
     from torch.utils.data import DataLoader
-    ds = MyDataset("./dataset", percentage=1)
+    ds = MyDataset("./dataset/flickr30k_images/", percentage=8)
     ds = ds.get_fraction_of_dataset(percentage=100)
     # use dataloader facilities which requires a preprocessed dataset
     v = Vocabulary(ds,reload=True)    
     
-    dataloader = DataLoader(ds, batch_size=30,
+    dataloader = DataLoader(ds, batch_size=100,
                         shuffle=True, num_workers=4, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
     train(dataloader, dataloader, 1e-3, 400, v)

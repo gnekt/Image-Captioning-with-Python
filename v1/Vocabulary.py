@@ -2,6 +2,8 @@ import os
 import torch
 import warnings
 from Dataset import MyDataset
+from typing import List
+
 class Vocabulary():
     # The vocabulary implementation is done with a pre-trained word embedding GLOVE50d
     # each word is represented by a record in a dataframe with this structure
@@ -49,7 +51,7 @@ class Vocabulary():
             "<UNK>":3
         }
     
-    def translate(self, word_sequence : list[str], type : str = "complete") -> torch.tensor:
+    def translate(self, word_sequence : List[str], type : str = "complete") -> torch.tensor:
         """Given a sequence of word, translate into id list according to the vocabulary.
 
         Args:
@@ -79,7 +81,7 @@ class Vocabulary():
         
         return _sequence
     
-    def rev_translate(self, words_id : torch.tensor) -> list[str]:
+    def rev_translate(self, words_id : torch.tensor) -> List[str]:
         """Given a sequence of word, translate into id list according to the vocabulary.
 
         Args:
