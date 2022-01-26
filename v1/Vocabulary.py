@@ -60,7 +60,7 @@ class Vocabulary():
         
         # Initialize the translator
         
-        if type == "training":
+        if type == "uncomplete":
             _sequence = torch.zeros(len(word_sequence)+1, dtype=torch.int32) # <SOS> + ...Caption...
             
         if type == "complete":

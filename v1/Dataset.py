@@ -46,12 +46,12 @@ class MyDataset(Dataset):
         if not os.path.isdir(directory_of_data):
             raise ValueError(f"{directory_of_data} is not a directory!")
         
-        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]].sample(frac=1)
+        _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]]
         self._dataset = _temp_dataset.head(int(len(_temp_dataset)*(percentage/100)))
         self.directory_of_data = directory_of_data
         
     def get_fraction_of_dataset(self, percentage: int): 
-        _temp_df_moved = self._dataset.head(int(len(self._dataset)*(percentage/100)))
+        _temp_df_moved = self._dataset.head(int(len(self._dataset)*(percentage/100))).sample(frac=1)
         _temp_df_copy = _temp_df_moved.copy()
         return MyDataset(directory_of_data=self.directory_of_data, already_computed_dataframe=_temp_df_copy)
     
@@ -93,7 +93,7 @@ class MyDataset(Dataset):
         
         captions_length = [len(caption) for caption in captions] # (Batch Size,)
         
-        captions_training_ids = [vocabulary.translate(caption,"training")for caption in captions] # (Batch Size, Caption)
+        captions_training_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
         
         captions_target_ids  = [vocabulary.translate(caption,"complete") for caption in captions]
         
@@ -116,14 +116,20 @@ class MyDataset(Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=MyDataset.evaluation_image_trasformation_parameter["mean"], std=MyDataset.evaluation_image_trasformation_parameter["std_dev"])
         ])
-        images = images.map(lambda image: operations(image))
+
+        images = list(map(lambda image: operations(image),list(images)))
         
         # Merge images (from tuple of 3D tensor to 4D tensor).
         images = torch.stack(images, 0) # (Batch Size, Color, Height, Width)
+                           
         
-        captions_length = [len(caption) for caption in captions] # (Batch Size,)
+        captions_evaluation_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
         
-        captions_ids = [vocabulary.translate(caption) for caption in captions] # (Batch Size, Caption)
+        captions_target_ids  = [vocabulary.translate(caption,"complete") for caption in captions]
         
-        return images,captions_ids.type(torch.LongTensor),torch.tensor(captions_length)
+        captions_evaluation_ids = nn.utils.rnn.pad_sequence(captions_evaluation_ids, padding_value=0, batch_first=True)
+        
+        captions_target_ids  = nn.utils.rnn.pad_sequence(captions_target_ids, padding_value=0, batch_first=True)
+        
+        return images,captions_evaluation_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor)
         
