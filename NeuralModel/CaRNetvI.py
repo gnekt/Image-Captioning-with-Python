@@ -137,15 +137,15 @@ class CaRNet1(nn.Module):
         
     def save(self, file_name):
         """Save the classifier."""
-        torch.save(self.C.state_dict(), f".saved/v1/{file_name}_C.pth")
-        torch.save(self.R.state_dict(), f".saved/v1/{file_name}_R.pth")
+        torch.save(self.C.state_dict(), f".saved/vI/{file_name}_C.pth")
+        torch.save(self.R.state_dict(), f".saved/vI/{file_name}_R.pth")
 
     def load(self, file_name):
         """Load the classifier."""
 
         # since our classifier is a nn.Module, we can load it using pytorch facilities (mapping it to the right device)
-        self.C.load_state_dict(torch.load(f".saved/v1/{file_name}_C.pth", map_location=self.device))
-        self.R.load_state_dict(torch.load(f".saved/v1/{file_name}_R.pth", map_location=self.device))
+        self.C.load_state_dict(torch.load(f".saved/vI/{file_name}_C.pth", map_location=self.device))
+        self.R.load_state_dict(torch.load(f".saved/vI/{file_name}_R.pth", map_location=self.device))
     
     def forward(self,images,captions):
         features = self.C(images)
@@ -274,7 +274,7 @@ class CaRNet1(nn.Module):
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     best_epoch = e + 1
-                    self.save("CaRNetv1")
+                    self.save("CaRNetvI")
 
                 epoch_train_loss /= epoch_num_train_examples
 
@@ -322,6 +322,7 @@ class CaRNet1(nn.Module):
             self.C.train()  # restoring the training state, if needed
             self.R.train()
         return acc
+    
 # Example of usage
 if __name__ == "__main__":
     from Vocabulary import Vocabulary
@@ -329,8 +330,8 @@ if __name__ == "__main__":
     from torch.utils.data import DataLoader
     ds = MyDataset("./dataset/flickr30k_images/", percentage=8)
     v = Vocabulary(ds,reload=True) 
-    dc = ds.get_fraction_of_dataset(percentage=70)
-    df = ds.get_fraction_of_dataset(percentage=30)
+    dc = ds.get_fraction_of_dataset(percentage=70, delete_transfered_from_source=True)
+    df = ds.get_fraction_of_dataset(percentage=30, delete_transfered_from_source=True)
     # use dataloader facilities which requires a preprocessed dataset
        
     
@@ -341,5 +342,5 @@ if __name__ == "__main__":
                         shuffle=True, num_workers=12, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
     
     net = CaRNet1(512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cpu")
-    net.load("CaRNetv1")
+    net.load("CaRNetvI")
     net.train(dataloader_training,dataloader_evaluation,1e-3,500,v)

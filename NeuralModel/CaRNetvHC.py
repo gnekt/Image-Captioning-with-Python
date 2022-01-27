@@ -49,6 +49,8 @@ class DecoderRNN(nn.Module):
         # and outputs hidden states of size hidden_dim
         self.lstm_unit = torch.nn.LSTMCell(embedding_size, hidden_size)
         
+        self.hidden_size = hidden_size
+        
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
         self.linear_1 = nn.Linear(hidden_size, vocab_size)
@@ -73,7 +75,7 @@ class DecoderRNN(nn.Module):
         
         # Feed LSTMCell with image features and retrieve the state
         
-        _h, _c = self.lstm_unit(features) # _h : (Batch size, Hidden size)
+        _h, _c = tuple( features, features) # _h : (Batch size, Hidden size)
         
         # Deterministict <SOS> Output as first word of the caption :)
         start = torch.zeros(self.word_embeddings.num_embeddings)
@@ -101,7 +103,7 @@ class DecoderRNN(nn.Module):
         sampled_ids = [torch.tensor([1]).to(torch.device(device))] # Hardcoded <SOS>
         input = self.word_embeddings(torch.LongTensor([1]).to(torch.device(device))).reshape((1,-1))
         with torch.no_grad(): 
-            _h ,_c = self.lstm_unit(features.unsqueeze(0))
+            _h, _c = tuple( features.unsqueeze(0), features.unsqueeze(0))
             for _ in range(max_caption_length-1):
                 _h, _c = self.lstm_unit(input, (_h ,_c))           # _h: (1, 1, hidden_size)
                 outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
@@ -137,15 +139,15 @@ class CaRNet1(nn.Module):
         
     def save(self, file_name):
         """Save the classifier."""
-        torch.save(self.C.state_dict(), f".saved/v1/{file_name}_C.pth")
-        torch.save(self.R.state_dict(), f".saved/v1/{file_name}_R.pth")
+        torch.save(self.C.state_dict(), f".saved/vHC/{file_name}_C.pth")
+        torch.save(self.R.state_dict(), f".saved/vHC/{file_name}_R.pth")
 
     def load(self, file_name):
         """Load the classifier."""
 
         # since our classifier is a nn.Module, we can load it using pytorch facilities (mapping it to the right device)
-        self.C.load_state_dict(torch.load(f".saved/v1/{file_name}_C.pth", map_location=self.device))
-        self.R.load_state_dict(torch.load(f".saved/v1/{file_name}_R.pth", map_location=self.device))
+        self.C.load_state_dict(torch.load(f".saved/vHC/{file_name}_C.pth", map_location=self.device))
+        self.R.load_state_dict(torch.load(f".saved/vHC/{file_name}_R.pth", map_location=self.device))
     
     def forward(self,images,captions):
         features = self.C(images)
@@ -274,7 +276,7 @@ class CaRNet1(nn.Module):
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     best_epoch = e + 1
-                    self.save("CaRNetv1")
+                    self.save("CaRNetvHC")
 
                 epoch_train_loss /= epoch_num_train_examples
 
@@ -341,5 +343,5 @@ if __name__ == "__main__":
                         shuffle=True, num_workers=12, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
     
     net = CaRNet1(512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cpu")
-    net.load("CaRNetv1")
+    net.load("CaRNetvHC")
     net.train(dataloader_training,dataloader_evaluation,1e-3,500,v)

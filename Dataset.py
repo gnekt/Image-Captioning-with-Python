@@ -50,9 +50,12 @@ class MyDataset(Dataset):
         self._dataset = _temp_dataset.head(int(len(_temp_dataset)*(percentage/100)))
         self.directory_of_data = directory_of_data
         
-    def get_fraction_of_dataset(self, percentage: int): 
+    def get_fraction_of_dataset(self, percentage: int, delete_transfered_from_source: bool = False): 
         _temp_df_moved = self._dataset.head(int(len(self._dataset)*(percentage/100))).sample(frac=1)
         _temp_df_copy = _temp_df_moved.copy()
+        
+        if delete_transfered_from_source:
+            self._dataset = self._dataset.drop(_temp_df_copy.index)
         return MyDataset(directory_of_data=self.directory_of_data, already_computed_dataframe=_temp_df_copy)
     
     def get_all_distinct_words_in_dataset(self):
