@@ -12,7 +12,7 @@ import torchvision.models as models
 from torch.nn.utils.rnn import pack_padded_sequence
 import torch.nn.functional as F
 
-device="cuda:0"
+device="cpu"
 class EncoderCNN(nn.Module):
     def __init__(self, projection_size):
         super(EncoderCNN, self).__init__()
@@ -224,7 +224,19 @@ class CaRNet1(nn.Module):
                     # computing gradients and updating the network weights
                     loss.backward()  # computing gradients
                     optimizer.step()  # updating weights
-                        
+                    
+                    # with torch.no_grad():
+                    #     self.C.eval()
+                    #     self.R.eval()
+                    #     features = self.C(images)
+                    #     import random
+                    #     numb = random.randint(0,2)
+                    #     caption = self.R.generate_caption(features[numb],30)
+                    #     print(vocabulary.rev_translate(captions_target_ids[numb]))
+                    #     print(vocabulary.rev_translate(caption[0]))
+                    #     self.C.train()
+                    #     self.R.train()
+                    
                     with torch.no_grad():
                         self.C.eval()
                         self.R.eval()
@@ -323,11 +335,11 @@ if __name__ == "__main__":
        
     
     dataloader_training = DataLoader(dc, batch_size=100,
-                        shuffle=True, num_workers=4, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
+                        shuffle=True, num_workers=12, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
     dataloader_evaluation = DataLoader(df, batch_size=50,
-                        shuffle=True, num_workers=4, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
+                        shuffle=True, num_workers=12, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
     
-    net = CaRNet1(512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cuda:0")
-    #net.load("CaRNetv1")
-    net.train(dataloader_training,dataloader_evaluation,1e-3,40,v)
+    net = CaRNet1(512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cpu")
+    net.load("CaRNetv1")
+    net.train(dataloader_training,dataloader_evaluation,1e-3,500,v)
