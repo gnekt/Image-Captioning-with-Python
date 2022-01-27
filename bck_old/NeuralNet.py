@@ -9,7 +9,7 @@ import random
 
 device = "cuda:0"
 class EncoderCNN(nn.Module):
-    def __init__(self, embed_size):
+    def __init__(self, embedding_size):
         super(EncoderCNN, self).__init__()
         resnet = models.resnet50(pretrained=True)
         for param in resnet.parameters():
@@ -17,38 +17,29 @@ class EncoderCNN(nn.Module):
         
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
-        self.linear = nn.Linear(resnet.fc.in_features, 50) 
+        self.linear = nn.Linear(resnet.fc.in_features, embedding_size) 
         
     def forward(self, images):
-        
         features = self.resnet(images) 
-        features = features.reshape(features.size(0), -1)
+        features = features.reshape(features.size(0), -1) # (Batch Size, Embedding Dim.)
         features = self.linear(features)
         return features
     
 class DecoderRNN(nn.Module):
-    def __init__(self, hidden_size, padding_index, vocab_size, embeddings ):
+    def __init__(self, hidden_size, padding_index, vocab_size, embeddings, embedding_size):
         """Set the hyper-parameters and build the layers."""
         super(DecoderRNN, self).__init__()
-        # Keep track of hidden_size for initialization of hidden state
-        self.hidden_size = hidden_size
         
         # Embedding layer that turns words into a vector of a specified size
-        self.word_embeddings = nn.Embedding.from_pretrained(embeddings, freeze=True, padding_idx = 0)
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=padding_index)
         
         # The LSTM takes embedded word vectors (of a specified size) as input
         # and outputs hidden states of size hidden_dim
-        self.lstm = nn.LSTM(input_size=50, \
-                            hidden_size=1024, # LSTM hidden units 
-                            num_layers=1, # number of LSTM layer
-                            batch_first=True,  # input & output will have batch size as 1st dimension
-                            dropout=0, # Not applying dropout 
-                            bidirectional=False, # unidirectional LSTM
-                           )
+        self.lstm_unit = torch.nn.LSTMCell(embedding_size, hidden_size)
         
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
-        self.linear_1 = nn.Linear(1024, vocab_size)
+        self.linear_1 = nn.Linear(hidden_size, vocab_size)
 
     def init_hidden_state(self, encoder_out):
         """

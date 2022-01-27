@@ -1,1 +1,0 @@
-# Interfaces that allow to create multiple instances of an abstract class for different esigence.
