@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from typing import Tuple,List
 from Dataset import MyDataset
 from Vocabulary import Vocabulary
+
 class EncoderCNN(nn.Module):
     def __init__(self, projection_size: int, device: str = "cpu"):
         """Constructor of the Encoder NN
@@ -196,8 +197,8 @@ class CaRNetvHC(nn.Module):
             bool: If True: Net saved correctly. False otherwise.
         """
         try:
-            torch.save(self.C.state_dict(), f"{file_path}/CaRNetvI_C.pth")
-            torch.save(self.R.state_dict(), f"{file_path}/CaRNetvI_C_R.pth")
+            torch.save(self.C.state_dict(), f"{file_path}/CaRNetvHC_C.pth")
+            torch.save(self.R.state_dict(), f"{file_path}/CaRNetvHC_R.pth")
         except Exception as ex:
             print(ex)
             return False
@@ -214,8 +215,8 @@ class CaRNetvHC(nn.Module):
         """
         
         # since our classifier is a nn.Module, we can load it using pytorch facilities (mapping it to the right device)
-        self.C.load_state_dict(torch.load(f"{file_path}/CaRNetvI_C.pth", map_location=self.device))
-        self.R.load_state_dict(torch.load(f"{file_path}/CaRNetvI_C_R.pth", map_location=self.device))
+        self.C.load_state_dict(torch.load(f"{file_path}/CaRNetvHC_C.pth", map_location=self.device))
+        self.R.load_state_dict(torch.load(f"{file_path}/CaRNetvHC_R.pth", map_location=self.device))
     
     def forward(self, images: torch.tensor, captions: torch.tensor) -> torch.tensor:
         """Provide images to the net for retrieve captions
@@ -296,7 +297,7 @@ class CaRNetvHC(nn.Module):
             epoch_train_loss = 0.
             epoch_num_train_examples = 0
 
-            for images,captions_training_ids,captions_target_ids,captions_length in  train_set:
+            for images,captions_ids,captions_length in  train_set:
                 optimizer.zero_grad() 
                 
                 batch_num_train_examples = images.shape[0]  # mini-batch size (it might be different from 'batch_size') -> last batch truncated
@@ -304,17 +305,16 @@ class CaRNetvHC(nn.Module):
                 
                 
                 images = images.to(self.device)
-                captions_training_ids = captions_training_ids.to(self.device) # captions > (B, L)
-                captions_target_ids = captions_target_ids.to(self.device) # captions > (B, |L|-1) without end token
+                captions_ids = captions_ids.to(self.device) # captions > (B, L)
                 captions_length = captions_length.to(self.device)
                 
                 # computing the network output on the current mini-batch
                 features = self.C(images)
-                outputs, outputs_length = self.R(features, captions_training_ids, captions_length) # outputs > (B, L, |V|); 
+                outputs, outputs_length = self.R(features, captions_ids, captions_length) # outputs > (B, L, |V|); 
                 
-                outputs = pack_padded_sequence(outputs, outputs_length, batch_first=True)  #(Batch, MaxCaptionLength, |Vocabulary|) -> (Batch * CaptionLength, |Vocabulary|)
+                outputs = pack_padded_sequence(outputs, captions_length.cpu(), batch_first=True)  #(Batch, MaxCaptionLength, |Vocabulary|) -> (Batch * CaptionLength, |Vocabulary|)
                 
-                targets = pack_padded_sequence(captions_target_ids, outputs_length, batch_first=True) #(Batch, MaxCaptionLength) -> (Batch * CaptionLength)
+                targets = pack_padded_sequence(captions_ids, captions_length.cpu(), batch_first=True) #(Batch, MaxCaptionLength) -> (Batch * CaptionLength)
                 
                 
                 loss = criterion(outputs.data, targets.data)
@@ -330,7 +330,7 @@ class CaRNetvHC(nn.Module):
                     import random
                     numb = random.randint(0,2)
                     caption = self.R.generate_caption(features[numb],30)
-                    print(vocabulary.rev_translate(captions_target_ids[numb]))
+                    print(vocabulary.rev_translate(captions_ids[numb]))
                     print(vocabulary.rev_translate(caption[0]))
                     self.C.train()
                     self.R.train()
@@ -342,10 +342,10 @@ class CaRNetvHC(nn.Module):
                     # Compute captions as ids for all the training images
                     projections = self.C(images)
                     
-                    captions_output = torch.zeros((projections.shape[0],captions_target_ids.shape[1])).to(self.device)
+                    captions_output = torch.zeros((projections.shape[0],captions_ids.shape[1])).to(self.device)
                     
                     for idx,projection in enumerate(range(projections.shape[0])):
-                        _caption_no_pad = self.R.generate_caption(projections[idx],captions_target_ids.shape[1])
+                        _caption_no_pad = self.R.generate_caption(projections[idx],captions_ids.shape[1])
                         captions_output[idx,:_caption_no_pad.shape[1]] = _caption_no_pad
                         # Fill the remaining portion of caption eventually with zeros
                         # Accuracy is not altered since if the length of caption is smaller than the captions_target_ids(padded), feed it with PAD is valid.
@@ -353,7 +353,7 @@ class CaRNetvHC(nn.Module):
                     captions_output_padded = captions_output.type(torch.int32).to(self.device) # From list of tensors to tensors
                     
                     # computing performance
-                    batch_train_acc = self.__accuracy(captions_output_padded.squeeze(1), captions_target_ids, captions_length)
+                    batch_train_acc = self.__accuracy(captions_output_padded.squeeze(1), captions_ids, captions_length)
 
                     # accumulating performance measures to get a final estimate on the whole training set
                     epoch_train_acc += batch_train_acc * batch_num_train_examples
@@ -369,10 +369,11 @@ class CaRNetvHC(nn.Module):
             val_acc = self.eval_classifier(validation_set)
 
             # # saving the model if the validation accuracy increases
-            # if val_acc > best_val_acc:
-            #     best_val_acc = val_acc
-            #     best_epoch = e + 1
-            #     self.save("CaRNetvI")
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_epoch = e + 1
+                
+                self.save("/content/drive/MyDrive/Progetti/Neural Networks/.saved")
 
             epoch_train_loss /= epoch_num_train_examples
 
@@ -397,17 +398,17 @@ class CaRNetvHC(nn.Module):
         with torch.no_grad():  # keeping off the autograd engine
 
             # loop on mini-batches to accumulate the network outputs (creating a new iterator)
-            for images,_,captions_validation_target_ids,captions_length  in data_set:
+            for images,captions_ids,captions_length  in data_set:
                 images = images.to(self.device)
                 
-                captions_validation_target_ids = captions_validation_target_ids.to(self.device)
+                captions_ids = captions_ids.to(self.device)
 
                 projections = self.C(images)
                         
-                captions_output = torch.zeros((projections.shape[0],captions_validation_target_ids.shape[1])).to(self.device)
+                captions_output = torch.zeros((projections.shape[0],captions_ids.shape[1])).to(self.device)
                 
                 for idx,projection in enumerate(range(projections.shape[0])):
-                    _caption_no_pad = self.R.generate_caption(projections[idx],captions_validation_target_ids.shape[1])
+                    _caption_no_pad = self.R.generate_caption(projections[idx],captions_ids.shape[1])
                     captions_output[idx,:_caption_no_pad.shape[1]] = _caption_no_pad
                     # Fill the remaining portion of caption eventually with zeros
                     # Accuracy is not altered since if the length of caption is smaller than the captions_target_ids(padded), feed it with PAD is valid.
@@ -415,7 +416,7 @@ class CaRNetvHC(nn.Module):
                 captions_output_padded = captions_output.type(torch.int32).to(self.device) # From list of tensors to tensors
                 
                 # computing performance
-                acc = self.__accuracy(captions_output_padded.squeeze(1), captions_validation_target_ids, captions_length)
+                acc = self.__accuracy(captions_output_padded.squeeze(1), captions_ids, captions_length)
 
         if training_mode_originally_on:
             self.C.train()  # restoring the training state, if needed
@@ -424,20 +425,18 @@ class CaRNetvHC(nn.Module):
     
 # Example of usage
 if __name__ == "__main__":
-    from Vocabulary import Vocabulary
-    from Dataset import MyDataset
     from torch.utils.data import DataLoader
-    ds = MyDataset("./dataset/images/", percentage=8)
+    ds = MyDataset("./dataset", percentage=1)
     v = Vocabulary(ds,reload=True) 
     dc = ds.get_fraction_of_dataset(percentage=70, delete_transfered_from_source=True)
     df = ds.get_fraction_of_dataset(percentage=30, delete_transfered_from_source=True)
     # use dataloader facilities which requires a preprocessed dataset
        
     
-    dataloader_training = DataLoader(dc, batch_size=5,
+    dataloader_training = DataLoader(dc, batch_size=32,
                         shuffle=True, num_workers=2, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
     
-    dataloader_evaluation = DataLoader(df, batch_size=5,
+    dataloader_evaluation = DataLoader(df, batch_size=32,
                         shuffle=True, num_workers=2, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
     
     net = CaRNetvHC(512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cuda:0")

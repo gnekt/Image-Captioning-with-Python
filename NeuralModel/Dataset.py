@@ -9,6 +9,11 @@ from PIL import Image
 import re
 from torchvision import transforms
 
+
+# ENV:
+# MAX_CAPTION_LENGTH 
+MAX_CAPTION_LENGTH = 15 
+
 class MyDataset(Dataset):
     
     image_trasformation_parameter = {
@@ -36,6 +41,8 @@ class MyDataset(Dataset):
             raise ValueError(f"{directory_of_data} is not a directory!")
         
         _temp_dataset=pd.read_csv(f"{directory_of_data}/results.csv", sep="|", skipinitialspace=True)[["image_name","comment"]]
+        _temp_dataset["comment"] = _temp_dataset["comment"].apply( lambda comment: re.findall("[\\w]+|\.|\,",str(comment).lower()))
+        _temp_dataset = _temp_dataset[ _temp_dataset["comment"].map(len) <= MAX_CAPTION_LENGTH]
         self._dataset = _temp_dataset.head(int(len(_temp_dataset)*(percentage/100)))
         self.directory_of_data = directory_of_data
         
@@ -50,7 +57,7 @@ class MyDataset(Dataset):
     def get_all_distinct_words_in_dataset(self):
         words = []
         for idx,row in self._dataset.iterrows():
-            for word in re.findall("[\\w]+|\.|\,", row["comment"].lower()):
+            for word in row["comment"]:
                 if word not in words:
                     words.append(word)
         return words
@@ -60,8 +67,8 @@ class MyDataset(Dataset):
     
     def __getitem__(self, idx):
         
-        image, caption = Image.open(f"{self.directory_of_data}/flickr30k_images/{self._dataset.iloc[idx]['image_name']}").convert('RGB'), \
-                            re.findall("[\\w]+|\.|\,", self._dataset.iloc[idx]["comment"].lower())
+        image, caption = Image.open(f"{self.directory_of_data}/images/{self._dataset.iloc[idx]['image_name']}").convert('RGB'), \
+                            self._dataset.iloc[idx]["comment"]
         
         return image, caption 
     
@@ -73,7 +80,7 @@ class MyDataset(Dataset):
         images, captions = zip(*data)
         
         operations = transforms.Compose([
-                transforms.RandomResizedCrop(MyDataset.image_trasformation_parameter["crop"]["size"]), # Crop a random portion of image and resize it to a given size.
+                transforms.Resize((MyDataset.image_trasformation_parameter["crop"]["size"],MyDataset.image_trasformation_parameter["crop"]["size"])), # Crop a random portion of image and resize it to a given size.
                 transforms.RandomHorizontalFlip(p=0), # Horizontally flip the given image randomly with a given probability.
                 transforms.ToTensor(), # Convert a PIL Image or numpy.ndarray to tensor.  (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] 
                 transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"]),
@@ -83,17 +90,14 @@ class MyDataset(Dataset):
         # Merge images (from tuple of 3D tensor to 4D tensor).
         images = torch.stack(images, 0) # (Batch Size, Color, Height, Width)
         
-        captions_length = torch.tensor([len(caption)+2 for caption in captions]) # (Batch Size,) Caption Length +2 Token
+        captions_length = torch.tensor([len(caption)+2 for caption in captions]) 
         
-        captions_training_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
+        captions = [vocabulary.translate(caption,"complete") for caption in captions]
         
-        captions_target_ids  = [vocabulary.translate(caption,"complete") for caption in captions]
+        captions = nn.utils.rnn.pad_sequence(captions, padding_value=0, batch_first=True)
         
-        captions_training_ids = nn.utils.rnn.pad_sequence(captions_training_ids, padding_value=0, batch_first=True)
         
-        captions_target_ids  = nn.utils.rnn.pad_sequence(captions_target_ids, padding_value=0, batch_first=True)
-        
-        return images,captions_training_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor), captions_length.type(torch.int32)
+        return images, captions.type(torch.LongTensor), captions_length.type(torch.int32)
     
     def pack_minibatch_evaluation(self, data, vocabulary):
         
@@ -103,7 +107,7 @@ class MyDataset(Dataset):
         images, captions = zip(*data)
         
         operations = transforms.Compose([
-                transforms.Resize(MyDataset.image_trasformation_parameter["crop"]["size"]),  # Crops the given image at the center.
+                transforms.Resize((MyDataset.image_trasformation_parameter["crop"]["size"], MyDataset.image_trasformation_parameter["crop"]["size"])),  # Crops the given image at the center.
                 transforms.ToTensor(),
                 transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"])
         ])
@@ -115,13 +119,10 @@ class MyDataset(Dataset):
                            
         captions_length = torch.tensor([len(caption)+2 for caption in captions]) 
         
-        captions_evaluation_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
+        captions = [vocabulary.translate(caption,"complete") for caption in captions]
         
-        captions_target_ids  = [vocabulary.translate(caption,"complete") for caption in captions]
+        captions = nn.utils.rnn.pad_sequence(captions, padding_value=0, batch_first=True)
         
-        captions_evaluation_ids = nn.utils.rnn.pad_sequence(captions_evaluation_ids, padding_value=0, batch_first=True)
         
-        captions_target_ids  = nn.utils.rnn.pad_sequence(captions_target_ids, padding_value=0, batch_first=True)
-        
-        return images,captions_evaluation_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor), captions_length.type(torch.int32)
+        return images, captions.type(torch.LongTensor), captions_length.type(torch.int32)
         
