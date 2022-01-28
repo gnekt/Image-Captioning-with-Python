@@ -11,20 +11,9 @@ from torchvision import transforms
 
 class MyDataset(Dataset):
     
-    training_image_trasformation_parameter = {
+    image_trasformation_parameter = {
         "crop":{
-            "size": 224,
-            "scale": (0.08,1.0),
-            "ratio": (3. / 4., 4. / 3.),
-        },
-        "mean": torch.tensor([0.485, 0.456, 0.406]), # the mean of the training data on the 3 channels (RGB)
-        "std_dev": torch.tensor([0.229, 0.224, 0.225]) # the standard deviation of the training data on the 3 channels (RGB)
-    }
-    
-    evaluation_image_trasformation_parameter = {
-        "crop":{
-            "size": 256,
-            "center": 224
+            "size": 224
         },
         "mean": torch.tensor([0.485, 0.456, 0.406]), # the mean of the training data on the 3 channels (RGB)
         "std_dev": torch.tensor([0.229, 0.224, 0.225]) # the standard deviation of the training data on the 3 channels (RGB)
@@ -84,17 +73,17 @@ class MyDataset(Dataset):
         images, captions = zip(*data)
         
         operations = transforms.Compose([
-                transforms.RandomResizedCrop(MyDataset.training_image_trasformation_parameter["crop"]["size"], scale=MyDataset.training_image_trasformation_parameter["crop"]["scale"], ratio=MyDataset.training_image_trasformation_parameter["crop"]["ratio"]), # Crop a random portion of image and resize it to a given size.
+                transforms.RandomResizedCrop(MyDataset.image_trasformation_parameter["crop"]["size"]), # Crop a random portion of image and resize it to a given size.
                 transforms.RandomHorizontalFlip(p=0), # Horizontally flip the given image randomly with a given probability.
                 transforms.ToTensor(), # Convert a PIL Image or numpy.ndarray to tensor.  (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] 
-                transforms.Normalize(mean=MyDataset.training_image_trasformation_parameter["mean"], std=MyDataset.training_image_trasformation_parameter["std_dev"]),
+                transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"]),
         ])
         images = list(map(lambda image: operations(image),list(images)))
         
         # Merge images (from tuple of 3D tensor to 4D tensor).
         images = torch.stack(images, 0) # (Batch Size, Color, Height, Width)
         
-        captions_length = [len(caption) for caption in captions] # (Batch Size,)
+        captions_length = torch.tensor([len(caption)+2 for caption in captions]) # (Batch Size,) Caption Length +2 Token
         
         captions_training_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
         
@@ -104,7 +93,7 @@ class MyDataset(Dataset):
         
         captions_target_ids  = nn.utils.rnn.pad_sequence(captions_target_ids, padding_value=0, batch_first=True)
         
-        return images,captions_training_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor)
+        return images,captions_training_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor), captions_length.type(torch.int32)
     
     def pack_minibatch_evaluation(self, data, vocabulary):
         
@@ -114,10 +103,9 @@ class MyDataset(Dataset):
         images, captions = zip(*data)
         
         operations = transforms.Compose([
-                transforms.Resize(MyDataset.evaluation_image_trasformation_parameter["crop"]["size"]), 
-                transforms.CenterCrop(MyDataset.evaluation_image_trasformation_parameter["crop"]["center"]),  # Crops the given image at the center.
+                transforms.Resize(MyDataset.image_trasformation_parameter["crop"]["size"]),  # Crops the given image at the center.
                 transforms.ToTensor(),
-                transforms.Normalize(mean=MyDataset.evaluation_image_trasformation_parameter["mean"], std=MyDataset.evaluation_image_trasformation_parameter["std_dev"])
+                transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"])
         ])
 
         images = list(map(lambda image: operations(image),list(images)))
@@ -125,6 +113,7 @@ class MyDataset(Dataset):
         # Merge images (from tuple of 3D tensor to 4D tensor).
         images = torch.stack(images, 0) # (Batch Size, Color, Height, Width)
                            
+        captions_length = torch.tensor([len(caption)+2 for caption in captions]) 
         
         captions_evaluation_ids = [vocabulary.translate(caption,"uncomplete")for caption in captions] # (Batch Size, Caption)
         
@@ -134,5 +123,5 @@ class MyDataset(Dataset):
         
         captions_target_ids  = nn.utils.rnn.pad_sequence(captions_target_ids, padding_value=0, batch_first=True)
         
-        return images,captions_evaluation_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor)
+        return images,captions_evaluation_ids.type(torch.LongTensor),captions_target_ids.type(torch.LongTensor), captions_length.type(torch.int32)
         
