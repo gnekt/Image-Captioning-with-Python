@@ -12,10 +12,10 @@ import torchvision.models as models
 from torch.nn.utils.rnn import pack_padded_sequence
 import torch.nn.functional as F
 from typing import Tuple,List
-from Dataset import MyDataset
-from Vocabulary import Vocabulary
-from Decoder.IDecoder import IDecoder
-from Encoder.IEncoder import IEncoder
+from .Dataset import MyDataset
+from .Vocabulary import Vocabulary
+from .Decoder.IDecoder import IDecoder
+from .Encoder.IEncoder import IEncoder
     
 class CaRNet(nn.Module):
     

@@ -1,7 +1,7 @@
 import os
 import torch
 import warnings
-from Dataset import MyDataset
+from .Dataset import MyDataset
 from typing import List
 
 class Vocabulary():

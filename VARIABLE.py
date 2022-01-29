@@ -1,0 +1,15 @@
+# Dataset Variable
+MAX_CAPTION_LENGTH = 15
+IMAGES_SUBDIRECTORY_NAME = "images"
+CAPTION_FILE_NAME = "result.csv"
+
+# Vocabulary
+EMBEDDINGS_REPRESENTATION = "1-HOT"
+
+# Neural Networks
+SAVE_EVERY_N_EPOCHS = 20
+
+# Application
+LOG_DIRECTORY = "./LOG"
+LOG_FORMAT_FILE = "CaRNet"
+
