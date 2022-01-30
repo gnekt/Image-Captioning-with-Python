@@ -3,11 +3,11 @@ import torch
 import torchvision.models as models
 
 class CResNet50Attention(nn.Module):
-    def __init__(self, projection_size: int = 3, device: str = "cpu"):
+    def __init__(self, encoder_dim: int, number_of_splits_into_image: int = 3, device: str = "cpu"):
         """Constructor of the Encoder NN
 
         Args:
-            projection_size (int): The dimension of projection into the space of RNN (Could be the input or the hidden state).
+            encoder_dim (int): The dimension of projection into the space of RNN (Could be the input or the hidden state).
             
             device (str, optional): The device on which the operations will be performed. Default "cpu".
         """
@@ -20,13 +20,17 @@ class CResNet50Attention(nn.Module):
         
         modules = list(resnet.children())[:-2]   # Expose the last convolutional layer. 512 Filters of size 3x3. Output of the ConvLayer -> (H_in/32,W_in/32,512) 
         
+        self.encoder_dim = 2048 
+        
+        self.number_of_splits_into_image = number_of_splits_into_image
+        
         # Q. Why (H_in/32, W_in/32)
         # A. Due to the resnet50 implementation, each convolutional layer will reduce the dimensionality of Heigth and Width by 2 times.
         
         self.resnet = nn.Sequential(*modules)
         
         # Applies a 2D adaptive average pooling over an input signal composed of several input planes.
-        self.avg = torch.nn.AdaptiveAvgPool2d((projection_size,projection_size)) # IN : (BatchSize,2048,H_in/32,W_in/32) -> OUT : (BatchSize,2048,H_projection_size,W_projection_size)
+        self.avg = torch.nn.AdaptiveAvgPool2d((number_of_splits_into_image,number_of_splits_into_image)) # IN : (BatchSize,2048,H_in/32,W_in/32) -> OUT : (BatchSize,2048,H_projection_size,W_projection_size)
         
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """Forward operation of the nn

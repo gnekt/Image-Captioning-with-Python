@@ -16,33 +16,42 @@ from .Dataset import MyDataset
 from .Vocabulary import Vocabulary
 from .Decoder.IDecoder import IDecoder
 from .Encoder.IEncoder import IEncoder
-    
+from .Attention.IAttention import IAttention
+
 class CaRNet(nn.Module):
     
-    def __init__(self, encoder: IEncoder, decoder: IDecoder, net_name: str, image_features: int, hidden_size: int, padding_index: int, vocab_size: int, embedding_size: int, device: str = "cpu"):
+    def __init__(self, encoder: IEncoder, decoder: IDecoder, net_name: str, encoder_dim: int, hidden_dim: int, padding_index: int, vocab_size: int, embedding_dim: int, attention: IAttention = None, attention_dim: int = 1024, device: str = "cpu"):
         """Create the CaRNet 
 
         Args:
             encoder (IEncoder): The encoder to use
             decoder (IDecoder): The decoder to use
             net_name (str): Name of the Neural Network
-            image_features (int): The dimensionality of the features vector extracted from the image
-            hidden_size (int): The Capacity of the LSTM Cell
+            encoder_dim (int): The dimensionality of the features vector extracted from the image
+            hidden_dim (int): The Capacity of the LSTM Cell
             padding_index (int): The index of the padding id, given from the vocabulary associated to the dataset
             vocab_size (int)): The size of the vocabulary associated to the dataset
-            embedding_size (int): The number of dimension associated to the input of the LSTM cell
+            embedding_dim (int): Size associated to the input of the LSTM cell
             device (str, optional): The device on which the net does the computation. Defaults to "cpu".
         """
-        
+            
         super(CaRNet, self).__init__()
         self.padding_index = padding_index
         self.device = torch.device(device)
         
         self.name_net = net_name
         # Define Encoder and Decoder
-        self.C = encoder(image_features, device)
-        self.R = decoder(hidden_size, padding_index, vocab_size, embedding_size, device)
+        self.C = encoder(encoder_dim = encoder_dim, device = device)
+        self.R = None
+        if attention is not None:
+            _attention = attention(self.C.encoder_dim, hidden_dim, attention_dim)
+            self.R = decoder(hidden_dim, padding_index, vocab_size, embedding_dim, device, _attention)
+        else:
+            self.R = decoder(hidden_dim, padding_index, vocab_size, embedding_dim, device)
 
+        if self.R is None:
+            raise ValueError("Could not create the Recurrent network.")
+        
         self.C.to(self.device)
         self.R.to(self.device)
         
@@ -182,17 +191,7 @@ class CaRNet(nn.Module):
                 loss.backward()  # computing gradients
                 optimizer.step()  # updating weights
                 
-                with torch.no_grad():
-                    self.C.eval()
-                    self.R.eval()
-                    features = self.C(images)
-                    import random
-                    numb = random.randint(0,2)
-                    caption = self.R.generate_caption(features[numb],30)
-                    print(vocabulary.rev_translate(captions_ids[numb]))
-                    print(vocabulary.rev_translate(caption[0]))
-                    self.C.train()
-                    self.R.train()
+                
                 
                 with torch.no_grad():
                     self.C.eval()
@@ -231,6 +230,17 @@ class CaRNet(nn.Module):
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 best_epoch = e + 1
+                with torch.no_grad():
+                    self.C.eval()
+                    self.R.eval()
+                    features = self.C(images)
+                    import random
+                    numb = random.randint(0,2)
+                    caption = self.R.generate_caption(features[numb],30)
+                    print(vocabulary.rev_translate(captions_ids[numb]))
+                    print(vocabulary.rev_translate(caption[0]))
+                    self.C.train()
+                    self.R.train()
                 
                 self.save("/content/drive/MyDrive/Progetti/Neural Networks/.saved")
 
