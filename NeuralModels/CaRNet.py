@@ -291,7 +291,7 @@ if __name__ == "__main__":
     
     # Load Encoder and Decoder models
     decoder = FactoryDecoder(Decoder.RNetvI)
-    encoder = FactoryEncoder(Encoder.CResNet50)
+    encoder = FactoryEncoder(Encoder.CResNet50Attention)
     
     dc = ds.get_fraction_of_dataset(percentage=70, delete_transfered_from_source=True)
     df = ds.get_fraction_of_dataset(percentage=30, delete_transfered_from_source=True)

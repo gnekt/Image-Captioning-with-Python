@@ -1,4 +1,5 @@
 from .Encoder.CResNet50 import CResNet50
+from .Encoder.CResNet50Attention import CResNet50Attention
 from .Decoder.RNetvHC import RNetvHC
 from .Decoder.RNetvI import RNetvI
 from .Decoder.RNetvH import RNetvH
@@ -8,10 +9,12 @@ from enum import Enum
 
 class Encoder(Enum):
     CResNet50 = 0
-
+    CResNet50Attention = 1
 def FactoryEncoder(encoder: Encoder):
     if encoder == Encoder.CResNet50:
         return CResNet50
+    if encoder == Encoder.CResNet50Attention:
+        return CResNet50Attention
     raise NotImplementedError("This encoder is not implemented yet")
 
 ####################################################################
