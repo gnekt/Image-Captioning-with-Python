@@ -8,42 +8,50 @@ from typing import Tuple,List
 
 class IDecoder(nn.Module):
     """
-        Class interface for LSTM unit 
+        Class interface for a LSTM unit 
         Args are intended as suggested.
     """
     
     def __init__(self, *args):
-        """Define the interface of a generic constructor for the Decoder Net
+        """Define the interface of a generic constructor for the Decoder Net.
 
         Args (Suggested):
-            hidden_size (int): The Capacity of the LSTM Cell
-            padding_index (int): The index of the padding id, given from the vocabulary associated to the dataset
-            vocab_size (int)): The size of the vocabulary associated to the dataset
-            embedding_size (int): The number of dimension associated to the input of the LSTM cell
-            device (str, optional): The device on which the operations will be performed. Default "cpu"
+        
+            hidden_dim (int): 
+                The Capacity of the LSTM Cell. 
+                
+            padding_index (int): 
+                The index of the padding id, given from the vocabulary associated to the dataset.
+                
+            vocab_size (int)): 
+                The size of the vocabulary associated to the dataset.
+                
+            embedding_dim (int): 
+                The number of features associated to a word.
+                
+            device (str, optional): Default "cpu"
+                The device on which the operations will be performed. 
         """
         super(IDecoder, self).__init__()                
 
-    def forward(self, *args) -> Tuple[torch.tensor, List[int]]:
+    def forward(self, *args) -> Tuple[torch.Tensor, List[int]]:
         """Interface for the forward operation of the RNN.
-                input of the LSTM cell for each time step:
-                    t_{-1}: feature vector 
-                    t_0: Deterministict <SOS> 
-                    .
-                    .
-                    .
-                    t_{N-1}: The embedding vector associated to the S_{N-1} id.  
-                    
-        Args (Suggested):
-            features (torch.tensor): The features associated to each element of the batch. (batch_size, embed_size)
+                  
+        Args (Suggested): 
+        
+            images (torch.Tensor): `(batch_dim, encoder_dim)`
+                The features associated to each image of the batch. 
             
-            captions (torch.tensor): The caption associated to each element of the batch. (batch_size, max_captions_length, word_embedding)
-                REMARK Each caption is in the full form: <SOS> + .... + <EOS>
+            captions (torch.Tensor): `(batch_dim, max_captions_length, embedding_dim)`
+                The caption associated to each image of the batch. 
+                    _REMARK Each caption is in the full form: <SOS> + .... + <EOS>_
                 
-            caption_length ([int]): The length of each caption in the batch.
+            caption_length (list(int)): 
+                The length of each caption in the batch.
             
-        Returns:
-            (torch.tensor): The hidden state of each time step from t_1 to t_N. (batch_size, max_captions_length, vocab_size)
+        Returns:    `[(batch_size, max_captions_length, vocab_size), list(int)]`
+        
+            (torch.Tensor): The hidden state of each time step from t_1 to t_N. 
             
             (list(int)): The length of each decoded caption. 
                 REMARK The <SOS> is provided as input at t_0.
@@ -51,15 +59,21 @@ class IDecoder(nn.Module):
         """             
         pass
     
-    def generate_caption(self, *args) -> torch.tensor:
+    def generate_caption(self, *args) -> torch.Tensor:
         """ Interface for generate a caption
 
         Args (Suggested):
-            feature (torch.tensor): The features vector (1, embedding_size)
-            captions_length (int): The length of the caption
+        
+            images (torch.Tensor): `(1, encoder_dim)`
+                The features associated to the image. 
+                
+            max_caption_length (int): 
+                The maximum ammisible length of the caption.
 
         Returns:
-            torch.tensor: The caption associated to the image given. 
-                    It includes <SOS> at t_0 by default.
+        
+            (torch.Tensor): `(1, <variable>)`
+                The caption associated to the image given. 
+                    REMARK It includes <SOS> at t_0 by default.
         """
         pass
