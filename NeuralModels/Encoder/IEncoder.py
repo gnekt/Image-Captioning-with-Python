@@ -12,20 +12,24 @@ class IEncoder(nn.Module):
     def __init__(self,  *args):
         """Constructor of the Encoder NN
 
-        Args (Suggested):
-            projection_size (int): The dimension of projection into the space of RNN (Could be the input or the hidden state).
+        Args:
+            encoder_dim (int): 
+                The dimensionality of the features vector extracted from the image
             
-            device (str, optional): The device on which the operations will be performed. Default "cpu".
+            device (str, optional): Default "cpu".
+                The device on which the operations will be performed.
         """
         super(IEncoder, self).__init__()
         
     def forward(self, *args) -> torch.Tensor:
         """Interface of forward operation of the nn
 
-        Args (Suggestes):
-            images (torch.tensor): The tensor of the image in the form (Batch Size, Channels, Width, Height)
+        Args:
+            images (torch.tensor):  `(batch_dim, channels, heigth, width)`
+                The tensor of the images.
 
         Returns:
-            [torch.tensor]: Features Projection in the form (Batch Size, Projection Dim.)
+            [torch.tensor]: `(batch_dim, encoder_dim)`
+                Features Projection for each image in the batch.
         """
         pass

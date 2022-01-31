@@ -3,13 +3,19 @@ import torch
 import torchvision.models as models
 
 class CResNet50(nn.Module):
-    def __init__(self, projection_size: int, device: str = "cpu"):
-        """Constructor of the Encoder NN
+    """
+        Encoder Built with a resnet50 with the last layer removed.
+    """
+    
+    def __init__(self, encoder_dim: int, device: str = "cpu"):
+        """Constructor of the Encoder
 
         Args:
-            projection_size (int): The dimension of projection into the space of RNN (Could be the input or the hidden state).
+            encoder_dim (int): 
+                The dimensionality of the features vector extracted from the image
             
-            device (str, optional): The device on which the operations will be performed. Default "cpu".
+            device (str, optional): Default "cpu".
+                The device on which the operations will be performed.
         """
         super(CResNet50, self).__init__()
         
@@ -21,16 +27,21 @@ class CResNet50(nn.Module):
         modules = list(resnet.children())[:-1]   # remove last fc layer
         self.resnet = nn.Sequential(*modules)
         
-        self.linear = nn.Linear(resnet.fc.in_features, projection_size) # define a last layer 
+        self.linear = nn.Linear(resnet.fc.in_features, encoder_dim) # define a last layer 
         
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """Forward operation of the nn
 
         Args:
-            images (torch.tensor): The tensor of the image in the form (Batch Size, Channels, Width, Height)
+            images (torch.tensor):  `(batch_dim, channels, heigth, width)`
+                The tensor of the images.
 
         Returns:
-            [torch.tensor]: Features Projection in the form (Batch Size, Projection Dim.)
+            [torch.tensor]: `(batch_dim, encoder_dim)`
+                Features Projection for each image in the batch.
+                
+        To Do:
+            Commentare il forward
         """
         
         features = self.resnet(images)

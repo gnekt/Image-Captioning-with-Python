@@ -111,7 +111,7 @@ class RNetvHCAttention(nn.Module):
         _h, _c = self.init_h_0_c_0(images) # _h : (batch_dim, hidden_dim), _c : (batch_dim, hidden_dim)
         
         # Deterministict <SOS> Output as first word of the caption t_{0}
-        start = self.words_embeddings(torch.LongTensor([1]).to(self.device))  # Get the embeddings of the token <SOS>
+        start = self.words_embedding(torch.LongTensor([1]).to(self.device))  # Get the embeddings of the token <SOS>
         
         # Bulk insert of <SOS> embeddings to all the elements of the batch 
         outputs = start.repeat(batch_dim,1,1).to(self.device) 
@@ -148,7 +148,7 @@ class RNetvHCAttention(nn.Module):
         """
         
         sampled_ids = [torch.Tensor([1]).to(self.device)] # Hardcoded <SOS>
-        input = self.words_embeddings(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
+        input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
         with torch.no_grad(): 
             image = image.reshape(1,-1, image.shape[2]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)
             _h, _c = self.init_h_0_c_0(image)
@@ -158,7 +158,7 @@ class RNetvHCAttention(nn.Module):
                 outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
                 _ , predicted = F.softmax(outputs,dim=1).cuda().max(1)  if self.device.type == "cuda" else   F.softmax(outputs,dim=1).max(1)  # predicted: The predicted id
                 sampled_ids.append(predicted)
-                input = self.words_embeddings(predicted)                       # In: (batch_dim, embedding_dim)
+                input = self.words_embedding(predicted)                       # In: (batch_dim, embedding_dim)
                 input = input.to(torch.device(self.device))                       # In: (1, 1, embedding_dim)
                 if predicted == 2:
                     break
