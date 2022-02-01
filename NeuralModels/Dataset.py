@@ -55,6 +55,7 @@ class MyDataset(Dataset):
                     | Index | image_name |  <List(str)> Caption |\n
                     |:-----:|:----------:|:--------------------:|\n
                     |   0   |  pippo.jpg | ["i","like","pizza"] |\n
+                    
         Raises:
             ValueError: if the dataset directory is invalid (Not Exist, Not a directory).
         """
