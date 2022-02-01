@@ -1,7 +1,11 @@
+# Typing trick for avoid circular import dependencies
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .Dataset import MyDataset
+    
 import os
 import torch
-import warnings
-from .Dataset import MyDataset
 from typing import List
 
 class Vocabulary():
