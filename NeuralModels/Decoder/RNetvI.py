@@ -47,7 +47,7 @@ class RNetvI(nn.Module):
         self.linear_1 = nn.Linear(hidden_dim, vocab_size)
                 
 
-    def forward(self, images: torch.Tensor, captions: torch.Tensor, captions_length: list[int]) -> Tuple[torch.Tensor, list[int]]:
+    def forward(self, images: torch.Tensor, captions: torch.Tensor, captions_length: List[int]) -> Tuple[torch.Tensor, List[int]]:
         """Compute the forward operation of the RNN.
                 input of the LSTM cell for each time step:
                     t_{-1}: features vector 
@@ -71,14 +71,14 @@ class RNetvI(nn.Module):
                     _REMARK Each caption is in the full form: <SOS> + .... + <EOS>_
                     REMARK The Tensor is padded with zeros
                     
-            caption_length (list(int)): 
+            caption_length (List(int)): 
                 The length of each caption in the batch.
             
-        Returns:    `[(batch_dim, max_captions_length, vocab_size), list(int)]`
+        Returns:    `[(batch_dim, max_captions_length, vocab_size), List(int)]`
         
             (torch.Tensor): The hidden state of each time step from t_1 to t_N. 
             
-            (list(int)): The length of each decoded caption. 
+            (List(int)): The length of each decoded caption. 
                 REMARK The <SOS> is provided as input at t_0.
                 REMARK The <EOS> token will be removed from the input of the LSTM.
         """             

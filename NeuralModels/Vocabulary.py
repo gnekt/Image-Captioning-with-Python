@@ -1,8 +1,8 @@
-# Typing trick for avoid circular import dependencies
-from __future__ import annotations
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .Dataset import MyDataset
+# Typing trick for avoid circular import dependencies valid for python > 3.9
+# from __future__ import annotations
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from .Dataset import MyDataset
     
 import os
 import torch
@@ -24,7 +24,7 @@ class Vocabulary():
     """
     
     
-    def __init__(self, source_dataset: MyDataset):
+    def __init__(self, source_dataset): # for python > 3.9 -> def __init__(self, source_dataset: MyDataset):
         """[summary]
 
         Args:

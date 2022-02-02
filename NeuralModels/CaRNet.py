@@ -17,7 +17,7 @@ from .Vocabulary import Vocabulary
 from .Decoder.IDecoder import IDecoder
 from .Encoder.IEncoder import IEncoder
 from .Attention.IAttention import IAttention
-from torchmetrics import JaccardIndex
+import numpy as np
 
 class CaRNet(nn.Module):
     
@@ -44,9 +44,10 @@ class CaRNet(nn.Module):
         # Define Encoder and Decoder
         self.C = encoder(encoder_dim = encoder_dim, device = device)
         self.R = None
+        self.attention = None
         if attention is not None:
-            _attention = attention(self.C.encoder_dim, hidden_dim, attention_dim)
-            self.R = decoder(hidden_dim, padding_index, vocab_size, embedding_dim, device, _attention)
+            self.attention = attention(self.C.encoder_dim, hidden_dim, attention_dim)
+            self.R = decoder(hidden_dim, padding_index, vocab_size, embedding_dim, device, self.attention)
         else:
             self.R = decoder(hidden_dim, padding_index, vocab_size, embedding_dim, device)
 
@@ -114,19 +115,18 @@ class CaRNet(nn.Module):
             float: The accuracy of the Net
         """
         
-        # We could subtract labels.ids to outputs.ids tensor, all the values different from 0 (output_caption_id != target_caption_id) are mismatch!
+
+        # computing the accuracy with Jaccard Similarity, pytorch unique facility has bugs with cuda....it can be done "a manella" :)
+        # from python 3.9 you could use the package torchmetrics
+        # from torchmetrics import JaccardIndex
+        # intersection_over_union = JaccardIndex(num_classes=self.R.vocab_size).cuda() if self.device.type != "cpu" else JaccardIndex(num_classes=self.R.vocab_size)
+        # return intersection_over_union(outputs, labels)
+        outputs = np.array(list(map(lambda output: np.unique(output), outputs.cpu())))
+        labels = np.array(list(map(lambda label: np.unique(label), labels.cpu())))
         
-        # computing the accuracy 
-        
-        intersection_over_union = JaccardIndex(num_classes=self.R.vocab_size).cuda() if self.device.type != "cpu" else JaccardIndex(num_classes=self.R.vocab_size)
-        return intersection_over_union(outputs, labels)
-    
-        # outputs = torch.nn.utils.rnn.pack_padded_sequence(outputs, captions_length.cpu(), batch_first=True).to(self.device)
-        # labels = torch.nn.utils.rnn.pack_padded_sequence(labels, captions_length.cpu(), batch_first=True).to(self.device)
-        # right_predictions =  outputs.data - labels.data == 0
-        
-        # acc = right_predictions.to(torch.float32).sum(axis=0) / right_predictions.shape[0]  
-        return acc
+        unions = list(map(lambda index: len(np.union1d(outputs[index],labels[index])), range(labels.shape[0])))
+        intersections = list(map(lambda index: len(np.intersect1d(outputs[index],labels[index])), range(labels.shape[0])))
+        return torch.mean(torch.tensor(intersections).type(torch.float)/torch.tensor(unions).type(torch.float), axis=0)
     
     
     def train(self, train_set: MyDataset, validation_set: MyDataset, lr: float, epochs: int, vocabulary: Vocabulary):
@@ -180,15 +180,25 @@ class CaRNet(nn.Module):
                 
                 # computing the network output on the current mini-batch
                 features = self.C(images)
-                outputs, outputs_length = self.R(features, captions_ids, captions_length) # outputs > (B, L, |V|); 
+                
+                # Check if attention is provided, if yes the output will change accordly for fitting doubly stochastic gradient
+                if self.attention is None:
+                    outputs, outputs_length = self.R(features, captions_ids, captions_length) # outputs > (B, L, |V|); 
+                else:
+                    outputs, outputs_length, alphas =  self.R(features, captions_ids, captions_length)
                 
                 outputs = pack_padded_sequence(outputs, captions_length.cpu(), batch_first=True)  #(Batch, MaxCaptionLength, |Vocabulary|) -> (Batch * CaptionLength, |Vocabulary|)
                 
                 targets = pack_padded_sequence(captions_ids, captions_length.cpu(), batch_first=True) #(Batch, MaxCaptionLength) -> (Batch * CaptionLength)
                 
-                
                 loss = criterion(outputs.data, targets.data)
-                
+                if self.attention is not None:
+                    loss += float(torch.sum((
+                                        0.5 * torch.sum((
+                                                            (1 - torch.sum(alphas, dim=1,keepdim=True)) ** 2 # caption_length sum
+                                                        ), dim=2, keepdim=True) # alpha_dim sum
+                                    ), dim=0).squeeze(1)) # batch_dim sum
+                    
                 # computing gradients and updating the network weights
                 loss.backward()  # computing gradients
                 optimizer.step()  # updating weights

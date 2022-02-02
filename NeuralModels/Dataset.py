@@ -1,8 +1,9 @@
-# Typing trick for avoid circular import dependencies
-from __future__ import annotations
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .Vocabulary import Vocabulary
+# Typing trick for avoid circular import dependencies valid for python > 3.9
+# from __future__ import annotations
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from .Vocabulary import Vocabulary
+
 import os
 import pandas as pd 
 import torch
@@ -137,7 +138,7 @@ class MyDataset(Dataset):
         """
         return self._dataset.shape[0]
     
-    def __getitem__(self, idx) -> Tuple[Image.Image, List[str]]:
+    def __getitem__(self, idx: int) -> Tuple[Image.Image, List[str]]:
         """Get the associated image and caption of a given index.
 
         Args:
@@ -153,7 +154,8 @@ class MyDataset(Dataset):
         
         return image, caption 
     
-    def pack_minibatch_training(self, data: List[Tuple[Image.Image, List[str]]], vocabulary: Vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    # For python > 3.9 -> def pack_minibatch_training(self, data: List[Tuple[Image.Image, List[str]]], vocabulary: Vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def pack_minibatch_training(self, data: List[Tuple[Image.Image, List[str]]], vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Custom method for packing a mini-batch for training.
 
         Args:
@@ -208,7 +210,8 @@ class MyDataset(Dataset):
         
         return images, captions.type(torch.LongTensor), captions_length.type(torch.int32)
     
-    def pack_minibatch_evaluation(self, data: List[Tuple[Image.Image, List[str]]], vocabulary: Vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    # For python > 3.9 -> def pack_minibatch_training(self, data: List[Tuple[Image.Image, List[str]]], vocabulary: Vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def pack_minibatch_evaluation(self, data: List[Tuple[Image.Image, List[str]]], vocabulary) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Custom method for packing a mini-batch for evaluation.
 
         Args:

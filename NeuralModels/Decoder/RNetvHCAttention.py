@@ -69,7 +69,7 @@ class RNetvHCAttention(nn.Module):
         return self.h_0(images), self.c_0(images)
     
     
-    def forward(self, images: torch.Tensor, captions: torch.Tensor, captions_length: List[int]) -> Tuple[torch.Tensor, List[int]]:
+    def forward(self, images: torch.Tensor, captions: torch.Tensor, captions_length: List[int]) -> Tuple[torch.Tensor, List[int], torch.Tensor]:
         """Compute the forward operation of the RNN.
                 input of the LSTM cell for each time step:
                     t_{-1}: NONE 
@@ -95,10 +95,13 @@ class RNetvHCAttention(nn.Module):
             (torch.Tensor): `(batch_dim, max_captions_length, vocab_size)`
                 The hidden state of each time step from t_1 to t_{MaxN}. 
                 
-            (list(int)): 
+            (List(int)): 
                 The length of each decoded caption. 
                     REMARK The <SOS> is provided as input at t_0.
                     REMARK The <EOS> token will be removed from the input of the LSTM.
+            
+            (torch.Tensor): `(batch_dim, max_captions_length, alphas)`
+                All the alphas evaluated over timestep t (from t_0 to t_{N-1}), for each image in the batch.
         """             
         
         # Retrieve batch size 
@@ -119,19 +122,23 @@ class RNetvHCAttention(nn.Module):
         
         # Bulk insert of <SOS> to all the elements of the batch 
         outputs = start.repeat(batch_dim,1,1).to(self.device) # Out: (batch_dim, 1, vocab_size)
-          
+        
+        # Tensor for storing alphas at each timestep t, structure (batch_dim, MaxN, number_of_splits^2) -> number_of_splits intended for a single Measure like Heigth and assuming square images
+        alphas_t = torch.zeros((batch_dim,inputs.shape[1],self.attention.number_of_splits**2)).to(self.device)
+        
         # Feed LSTMCell with image features and retrieve the state
         
         # How it works the loop?
         # For each time step t \in {0, N-1}, where N is the caption length 
                 
         for idx in range(0,inputs.shape[1]): 
-            attention_encoding, _ = self.attention(images, _h)
+            attention_encoding, alphas_t_i = self.attention(images, _h) # Out: attention_encoding->(batch_dim,encoder_dim), alphas_t_i->(batch_dim, number_of_splits)
+            alphas_t[:,idx,:] = alphas_t_i
             _h, _c = self.lstm_unit(torch.cat([attention_encoding,inputs[:,idx,:]], dim=1), (_h,_c))  # inputs[:,idx,:]: for all the captions in the batch, pick the embedding vector of the idx-th word in all the captions
             _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim), Out: (batch_dim, vocab_size)
             outputs = torch.cat((outputs,_outputs.unsqueeze(1)),dim=1) # Append in dim `1` the output of the LSTMCell for all the elements in batch
         
-        return outputs, list(map(lambda length: length-1, captions_length))  
+        return outputs, list(map(lambda length: length-1, captions_length)),alphas_t
     
     def generate_caption(self, image: torch.Tensor, captions_length: int) -> torch.Tensor:
         """Given the features vector retrieved by the encoder, perform a decoding (Generate a caption)
@@ -151,7 +158,7 @@ class RNetvHCAttention(nn.Module):
                     It includes <SOS> at t_0 by default.
         """
         
-        sampled_ids = [torch.Tensor([1]).to(self.device)] # Hardcoded <SOS>
+        sampled_ids = [torch.Tensor([1]).type(torch.int64).to(self.device)] # Hardcoded <SOS>
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
         with torch.no_grad(): 
             image = image.reshape(1,-1, image.shape[2]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)

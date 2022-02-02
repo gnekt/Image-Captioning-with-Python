@@ -9,7 +9,7 @@ class SoftAttention(nn.Module):
         Simple implementation of Bahdanau Attention model.
     """
     
-    def __init__(self, encoder_dim: int , hidden_dim: int, attention_dim: int):
+    def __init__(self, encoder_dim: int , hidden_dim: int, attention_dim: int, number_of_splits: int = 3):
         """Constructor for a SoftAttention model 
 
         Args:
@@ -19,12 +19,16 @@ class SoftAttention(nn.Module):
                 The capacity of the LSTM.
             attention_dim (int): 
                 The capacity of the Attention Model.
+            number_of_splits (int):
+                Number of image portions for Heigth (square resolution)
         """
         super(SoftAttention, self).__init__()
         
         self.attention_dim = attention_dim
         
         self.encoder_dim = encoder_dim
+        
+        self.number_of_splits = number_of_splits
         
         self.image_attention_projection = nn.Linear(encoder_dim, attention_dim)
         

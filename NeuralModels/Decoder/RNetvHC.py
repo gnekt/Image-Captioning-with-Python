@@ -66,14 +66,14 @@ class RNetvHC(nn.Module):
                     _REMARK Each caption is in the full form: <SOS> + .... + <EOS>_
                     REMARK The Tensor is padded with zeros
                     
-            caption_length (list(int)): 
+            caption_length (List(int)): 
                 The length of each caption in the batch.
             
-        Returns:    `[(batch_dim, max_captions_length, vocab_size), list(int)]`
+        Returns:    `[(batch_dim, max_captions_length, vocab_size), List(int)]`
         
             (torch.Tensor): The hidden state of each time step from t_1 to t_N. 
             
-            (list(int)): The length of each decoded caption. 
+            (List(int)): The length of each decoded caption. 
                 REMARK The <SOS> is provided as input at t_0.
                 REMARK The <EOS> token will be removed from the input of the LSTM.
         """             
