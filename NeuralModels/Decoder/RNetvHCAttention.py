@@ -145,7 +145,7 @@ class RNetvHCAttention(nn.Module):
 
         Args:
         
-            image (torch.tensor):  `(batch_dim, H_portions, W_portions, encoder_dim)`
+            image (torch.Tensor):  `(batch_dim, H_portions, W_portions, encoder_dim)`
                 The image.
                 
             captions_length (int): 
@@ -153,18 +153,23 @@ class RNetvHCAttention(nn.Module):
 
         Returns:
         
-            torch.tensor: 
+            (torch.Tensor): 
                 The caption associated to the image given. 
                     It includes <START> at t_0 by default.
+                    
+            (torch.Tensor):
+                The alphas evaluated at each time t
+                
         """
         
         sampled_ids = [torch.Tensor([1]).type(torch.int64).to(self.device)] # Hardcoded <START>
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
+        alphas = torch.zeros(captions_length, self.attention.number_of_splits **2) # Out: (MaxCaptionLength, number_of_splits)
         with torch.no_grad(): 
             image = image.reshape(1,-1, image.shape[2]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)
             _h, _c = self.init_h_0_c_0(image)
-            for _ in range(captions_length-1):
-                attention_encoding, alpha = self.attention(image, _h)
+            for idx in range(captions_length-1):
+                attention_encoding, alphas[idx,:] = self.attention(image, _h)
                 _h, _c = self.lstm_unit(torch.cat([attention_encoding, input], dim=1), (_h ,_c))           # _h: (1, 1, hidden_dim)
                 outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
                 _ , predicted = F.softmax(outputs,dim=1).cuda().max(1)  if self.device.type == "cuda" else   F.softmax(outputs,dim=1).max(1)  # predicted: The predicted id
@@ -174,4 +179,4 @@ class RNetvHCAttention(nn.Module):
                 if predicted == 2:
                     break
             sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (1, captions_length)
-        return sampled_ids
+        return sampled_ids, alphas

@@ -22,6 +22,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt
+from VARIABLE import MAX_CAPTION_LENGTH
 
 class CaRNet(nn.Module):
     
@@ -213,26 +214,13 @@ class CaRNet(nn.Module):
                     self.C.eval()
                     self.R.eval()
                     
-                    with torch.no_grad():
-                    # self.C.eval()
-                    # self.R.eval()
-                    # features = self.C(images)
-                    # import random
-                    # numb = random.randint(0,2)
-                    # caption = self.R.generate_caption(features[numb],30)
-                    # print(vocabulary.rev_translate(captions_ids[numb]))
-                    # print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
-                    # self.C.train()
-                    # self.R.train()
-                        self.eval(images[0])
-                    
                     # Compute captions as ids for all the training images
                     projections = self.C(images)
                     
                     captions_output = torch.zeros((projections.shape[0],captions_ids.shape[1])).to(self.device)
                     
                     for idx,projection in enumerate(range(projections.shape[0])):
-                        _caption_no_pad = self.R.generate_caption(projections[idx],captions_ids.shape[1])
+                        _caption_no_pad, _ = self.R.generate_caption(projections[idx],captions_ids.shape[1])
                         captions_output[idx,:_caption_no_pad.shape[1]] = _caption_no_pad
                         # Fill the remaining portion of caption eventually with zeros
                         # Accuracy is not altered since if the length of caption is smaller than the captions_target_ids(padded), feed it with PAD is valid.
@@ -270,7 +258,7 @@ class CaRNet(nn.Module):
                     # print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
                     # self.C.train()
                     # self.R.train()
-                    self.eval(images)
+                    self.eval(images[9], vocabulary)
                 
                 self.save("/content/drive/MyDrive/Progetti/Neural Networks/.saved")
 
@@ -307,7 +295,7 @@ class CaRNet(nn.Module):
                 captions_output = torch.zeros((projections.shape[0],captions_ids.shape[1])).to(self.device)
                 
                 for idx,projection in enumerate(range(projections.shape[0])):
-                    _caption_no_pad = self.R.generate_caption(projections[idx],captions_ids.shape[1])
+                    _caption_no_pad, _ = self.R.generate_caption(projections[idx],captions_ids.shape[1])
                     captions_output[idx,:_caption_no_pad.shape[1]] = _caption_no_pad
                     # Fill the remaining portion of caption eventually with zeros
                     # Accuracy is not altered since if the length of caption is smaller than the captions_target_ids(padded), feed it with PAD is valid.
@@ -322,32 +310,50 @@ class CaRNet(nn.Module):
             self.R.train()
         return acc
     
-    def eval(self, image: Image.Image):
+    
+    
+    # Inspiration is taken from this example https://www.kaggle.com/mdteach/image-captioning-with-attention-pytorch
+    # Thanks ABISHEK BASHYAL :)
+    def eval(self, image: Image.Image, vocabulary: Vocabulary, image_is_a_tensor: bool = False):
         # enforcing evaluation mode
         self.C.eval()
-        self.R.eval()  
-        plt.show()
-        image = image.resize([self.attention.number_of_splits * 24, self.attention.number_of_splits * 24], Image.LANCZOS)
-
-        word = "<START>"
-        t=0
+        self.R.eval() 
         
-        while word != "<END>":
-            if t > 50:
-                break
-            plt.subplot(np.ceil(len(words) / 5.), 5, t + 1)
-
-            plt.text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
-            plt.imshow(image)
-            current_alpha = alphas[t, :]
-            alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
-            if t == 0:
-                plt.imshow(alpha, alpha=0)
-            else:
-                plt.imshow(alpha, alpha=0.8)
-            plt.set_cmap(cm.Greys_r)
-            plt.axis('off')
-        plt.show()
+        
+        # operations = transforms.Compose([
+        #         transforms.Resize((MyDataset.image_trasformation_parameter["crop"]["size"], MyDataset.image_trasformation_parameter["crop"]["size"])),  # Crops the given image at the center.
+        #         transforms.ToTensor(),
+        #         transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"])
+        # ])
+        # image = operations(image)
+        
+        features = self.C(image.unsqueeze(0)).reshape(1,-1,self.C.encoder_dim)
+        
+        image[0] = image[0] * 0.229
+        image[1] = image[1] * 0.224 
+        image[2] = image[2] * 0.225 
+        image[0] += 0.485 
+        image[1] += 0.456 
+        image[2] += 0.406
+        
+        image = image.permute((1,2,0))
+        
+        caption, alphas = self.R.generate_caption(features,MAX_CAPTION_LENGTH)
+        caption = vocabulary.rev_translate(caption[0])
+        
+        fig = plt.figure(figsize=(15, 15))
+        _caption_len = len(caption)
+        for t in range(_caption_len):
+            _att = alphas[t].reshape(self.attention.number_of_splits,self.attention.number_of_splits)
+            
+            ax = fig.add_subplot(_caption_len//2, _caption_len//2, t+1)
+            
+            ax.set_title(caption[t])
+            
+            img = ax.imshow(image)
+            ax.imshow(_att, cmap='gray', alpha=0.7, extent=img.get_extent())    
+        plt.tight_layout()
+        plt.savefig("test.png")
         
 # Example of usage
 if __name__ == "__main__":
