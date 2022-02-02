@@ -17,6 +17,7 @@ from .Vocabulary import Vocabulary
 from .Decoder.IDecoder import IDecoder
 from .Encoder.IEncoder import IEncoder
 from .Attention.IAttention import IAttention
+from torchmetrics import JaccardIndex
 
 class CaRNet(nn.Module):
     
@@ -117,15 +118,16 @@ class CaRNet(nn.Module):
         
         # computing the accuracy 
         
-        # To Do add dimensionality 
-        outputs = torch.nn.utils.rnn.pack_padded_sequence(outputs, captions_length.cpu(), batch_first=True).to(self.device)
-        labels = torch.nn.utils.rnn.pack_padded_sequence(labels, captions_length.cpu(), batch_first=True).to(self.device)
-        right_predictions =  outputs.data - labels.data == 0
+        intersection_over_union = JaccardIndex(num_classes=self.R.vocab_size).cuda() if self.device.type != "cpu" else JaccardIndex(num_classes=self.R.vocab_size)
+        return intersection_over_union(outputs, labels)
+    
+        # outputs = torch.nn.utils.rnn.pack_padded_sequence(outputs, captions_length.cpu(), batch_first=True).to(self.device)
+        # labels = torch.nn.utils.rnn.pack_padded_sequence(labels, captions_length.cpu(), batch_first=True).to(self.device)
+        # right_predictions =  outputs.data - labels.data == 0
         
-        acc = right_predictions.to(torch.float32).sum(axis=0) / right_predictions.shape[0]  
+        # acc = right_predictions.to(torch.float32).sum(axis=0) / right_predictions.shape[0]  
         return acc
     
-        # TO DO: Devo usare la confusion matrix????????? 
     
     def train(self, train_set: MyDataset, validation_set: MyDataset, lr: float, epochs: int, vocabulary: Vocabulary):
         """[summary]
@@ -222,7 +224,7 @@ class CaRNet(nn.Module):
                     self.R.train()
                     
                     # printing (mini-batch related) stats on screen
-                    print("  mini-batch:\tloss={0:.4f}, tr_acc={1:.2f}".format(loss.item(), batch_train_acc))
+                    print("  mini-batch:\tloss={0:.4f}, tr_acc={1:.5f}".format(loss.item(), batch_train_acc))
                     
             val_acc = self.eval_classifier(validation_set)
 
@@ -238,7 +240,7 @@ class CaRNet(nn.Module):
                     numb = random.randint(0,2)
                     caption = self.R.generate_caption(features[numb],30)
                     print(vocabulary.rev_translate(captions_ids[numb]))
-                    print(vocabulary.rev_translate(caption[0]))
+                    print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
                     self.C.train()
                     self.R.train()
                 
@@ -247,7 +249,7 @@ class CaRNet(nn.Module):
             epoch_train_loss /= epoch_num_train_examples
 
             # printing (epoch related) stats on screen
-            print(("epoch={0}/{1}:\tloss={2:.4f}, tr_acc={3:.2f}, val_acc={4:.2f}"
+            print(("epoch={0}/{1}:\tloss={2:.4f}, tr_acc={3:.5f}, val_acc={4:.5f}"
                 + (", BEST!" if best_epoch == e + 1 else ""))
                 .format(e + 1, epochs, epoch_train_loss,
                         epoch_train_acc / epoch_num_train_examples, val_acc))
