@@ -1,5 +1,5 @@
 {
     "configurations": [
-    {"name":"Main","type":"python","request":"launch","program":"${file}","console":"integratedTerminal"}
+    {"name":"Main","type":"python","request":"launch","program":"${workspaceFolder}/main.py","console":"integratedTerminal"}
     ]
 }

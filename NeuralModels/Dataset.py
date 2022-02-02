@@ -174,7 +174,7 @@ class MyDataset(Dataset):
                   
                 Tuple[0]: The images of the mini-batch converted to Tensor.
                 Tuple[1]: The caption of each image the mini-batch, the dim 2 depends on the maximum caption length inside the batch. 
-                Tuple[2]: The length of each caption +2 for <SOS> and <EOS> token.
+                Tuple[2]: The length of each caption +2 for <START> and <END> token.
         """
         # Sort the data list by caption length (descending order).
         data.sort(key=lambda x: len(x[1]), reverse=True)
@@ -188,7 +188,7 @@ class MyDataset(Dataset):
         # Trasnform the images from PIL.Image into a pytorch.Tensor
         operations = transforms.Compose([
                 transforms.Resize((MyDataset.image_trasformation_parameter["crop"]["size"],MyDataset.image_trasformation_parameter["crop"]["size"])), # Crop a random portion of image and resize it to a given size.
-                transforms.RandomHorizontalFlip(p=0), # Horizontally flip the given image randomly with a given probability.
+                transforms.RandomHorizontalFlip(p=0.3), # Horizontally flip the given image randomly with a given probability.
                 transforms.ToTensor(), # Convert a PIL Image or numpy.ndarray to tensor.  (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0] 
                 transforms.Normalize(mean=MyDataset.image_trasformation_parameter["mean"], std=MyDataset.image_trasformation_parameter["std_dev"]),
         ])
@@ -198,10 +198,10 @@ class MyDataset(Dataset):
         
         # Evaluate captions: Devo
         # Q. Why +2?
-        # A. For the <SOS> and <EOS> Token.
+        # A. For the <START> and <END> Token.
         captions_length = torch.tensor([len(caption)+2 for caption in captions]) # Out: (batch_dim)
         
-        # From to words to ids of vocabulary, add <SOS>.id at beginning and <EOS>.id at end.
+        # From to words to ids of vocabulary, add <START>.id at beginning and <END>.id at end.
         captions = [vocabulary.translate(caption,"complete") for caption in captions]
         
         # Pad the captions with zeros id == <PAD>.id.
@@ -230,7 +230,7 @@ class MyDataset(Dataset):
                   
                 Tuple[0]: The images of the mini-batch converted to Tensor.
                 Tuple[1]: The caption of each image the mini-batch, the dim 2 depends on the maximum caption length inside the batch. 
-                Tuple[2]: The length of each caption +2 for <SOS> and <EOS> token.
+                Tuple[2]: The length of each caption +2 for <START> and <END> token.
         """
         # Sort the data list by caption length (descending order).
         data.sort(key=lambda x: len(x[1]), reverse=True)
@@ -255,10 +255,10 @@ class MyDataset(Dataset):
         
         # Evaluate captions: Devo
         # Q. Why +2?
-        # A. For the <SOS> and <EOS> Token.
+        # A. For the <START> and <END> Token.
         captions_length = torch.tensor([len(caption)+2 for caption in captions]) # Out: (batch_dim)
         
-        # From to words to ids of vocabulary, add <SOS>.id at beginning and <EOS>.id at end.
+        # From to words to ids of vocabulary, add <START>.id at beginning and <END>.id at end.
         captions = [vocabulary.translate(caption,"complete") for caption in captions]
         
         # Pad the captions with zeros id == <PAD>.id.

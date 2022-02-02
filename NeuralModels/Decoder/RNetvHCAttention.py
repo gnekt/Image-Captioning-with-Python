@@ -73,7 +73,7 @@ class RNetvHCAttention(nn.Module):
         """Compute the forward operation of the RNN.
                 input of the LSTM cell for each time step:
                     t_{-1}: NONE 
-                    t_0: Deterministict <SOS> 
+                    t_0: Deterministict <START> 
                     .
                     .
                     .
@@ -85,7 +85,7 @@ class RNetvHCAttention(nn.Module):
             
             captions (torch.Tensor):  `(batch_dim, max_captions_length, embedding_dim)`
                 The caption associated to each element of the batch.
-                    REMARK Each caption is in the full form: <SOS> + .... + <EOS>
+                    REMARK Each caption is in the full form: <START> + .... + <END>
                     REMARK The Tensor is padded with zeros
                     
             caption_length ([int]): 
@@ -97,8 +97,8 @@ class RNetvHCAttention(nn.Module):
                 
             (List(int)): 
                 The length of each decoded caption. 
-                    REMARK The <SOS> is provided as input at t_0.
-                    REMARK The <EOS> token will be removed from the input of the LSTM.
+                    REMARK The <START> is provided as input at t_0.
+                    REMARK The <END> token will be removed from the input of the LSTM.
             
             (torch.Tensor): `(batch_dim, max_captions_length, alphas)`
                 All the alphas evaluated over timestep t (from t_0 to t_{N-1}), for each image in the batch.
@@ -115,12 +115,12 @@ class RNetvHCAttention(nn.Module):
         images = images.reshape(batch_dim,-1, images.shape[3]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)
         _h, _c = self.init_h_0_c_0(images) # _h : (batch_dim, hidden_dim), _c : (batch_dim, hidden_dim)
         
-        # Deterministict <SOS> Output as first word of the caption t_{0}
+        # Deterministict <START> Output as first word of the caption t_{0}
         start = torch.zeros(self.vocab_size).unsqueeze(0)
         start[0][1] = 1
         start = start.to(self.device)  # Out: (1, vocab_size)
         
-        # Bulk insert of <SOS> to all the elements of the batch 
+        # Bulk insert of <START> to all the elements of the batch 
         outputs = start.repeat(batch_dim,1,1).to(self.device) # Out: (batch_dim, 1, vocab_size)
         
         # Tensor for storing alphas at each timestep t, structure (batch_dim, MaxN, number_of_splits^2) -> number_of_splits intended for a single Measure like Heigth and assuming square images
@@ -155,10 +155,10 @@ class RNetvHCAttention(nn.Module):
         
             torch.tensor: 
                 The caption associated to the image given. 
-                    It includes <SOS> at t_0 by default.
+                    It includes <START> at t_0 by default.
         """
         
-        sampled_ids = [torch.Tensor([1]).type(torch.int64).to(self.device)] # Hardcoded <SOS>
+        sampled_ids = [torch.Tensor([1]).type(torch.int64).to(self.device)] # Hardcoded <START>
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
         with torch.no_grad(): 
             image = image.reshape(1,-1, image.shape[2]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)

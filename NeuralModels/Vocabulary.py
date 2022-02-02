@@ -16,11 +16,11 @@ class Vocabulary():
         
             1) The vocabulary is enriched with 4 special words:\n
                 <PAD>: Padding ------> ID: 0\n
-                <SOS>: Start Of String ------> ID: 1\n
-                <EOS>: End Of String ------> ID: 2\n
+                <START>: Start Of String ------> ID: 1\n
+                <END>: End Of String ------> ID: 2\n
                 <UNK>: Out of vocabulary word ------> ID: 3\n
 
-                Example: <SOS> I Love Pizza <EOS> <PAD> <PAD> -> Translate into ids -> 1 243 5343 645655 2 0 0 
+                Example: <START> I Love Pizza <END> <PAD> <PAD> -> Translate into ids -> 1 243 5343 645655 2 0 0 
     """
     
     
@@ -37,16 +37,16 @@ class Vocabulary():
         dataset_words = source_dataset.get_all_distinct_words_in_dataset()
         
         # Dictionary length 
-        self.dictionary_length = len(dataset_words)+4 # Dictionary word + 4 Flavored Token (PAD + SOS + EOS + UNK)
+        self.dictionary_length = len(dataset_words)+4 # Dictionary word + 4 Flavored Token (PAD + START + END + UNK)
         
         self.word2id = {}
-        self.embeddings = torch.zeros((self.dictionary_length, self.dictionary_length))  # DIM1: dict rows + 4 flavored token (PAD + SOS + EOS + UNK) | DIM2: Dict Rows +4 flavored token (PAD + SOS + EOS + UNK) as 1-hot
+        self.embeddings = torch.zeros((self.dictionary_length, self.dictionary_length))  # DIM1: dict rows + 4 flavored token (PAD + START + END + UNK) | DIM2: Dict Rows +4 flavored token (PAD + START + END + UNK) as 1-hot
         
         # Initialize the token:
-        # <PAD>, <SOS>, <EOS>, <UNK>
+        # <PAD>, <START>, <END>, <UNK>
         self.word2id["<PAD>"] = 0
-        self.word2id["<SOS>"] = 1
-        self.word2id["<EOS>"] = 2
+        self.word2id["<START>"] = 1
+        self.word2id["<END>"] = 2
         self.word2id["<UNK>"] = 3
         
         counter = 4 
@@ -59,8 +59,8 @@ class Vocabulary():
     def predefined_token_idx(self) -> dict:
         return {
             "<PAD>":0,
-            "<SOS>":1,
-            "<EOS>":2,
+            "<START>":1,
+            "<END>":2,
             "<UNK>":3
         }
     
@@ -74,15 +74,15 @@ class Vocabulary():
         # Initialize the translator
         
         if type == "uncomplete":
-            _sequence = torch.zeros(len(word_sequence)+1, dtype=torch.int32) # <SOS> + ...Caption...
+            _sequence = torch.zeros(len(word_sequence)+1, dtype=torch.int32) # <START> + ...Caption...
             
         if type == "complete":
-            _sequence = torch.zeros(len(word_sequence)+2, dtype=torch.int32) # <SOS> + ...Caption... + <EOS> 
-            _sequence[-1] = self.word2id["<EOS>"]
+            _sequence = torch.zeros(len(word_sequence)+2, dtype=torch.int32) # <START> + ...Caption... + <END> 
+            _sequence[-1] = self.word2id["<END>"]
             
-        _sequence[0] = self.word2id["<SOS>"]
+        _sequence[0] = self.word2id["<START>"]
         
-        counter = 1 # Always skip <SOS> 
+        counter = 1 # Always skip <START> 
         
         # Evaluate all the word into the caption and translate it to an embeddings
         for word in word_sequence:

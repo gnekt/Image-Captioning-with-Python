@@ -1,6 +1,6 @@
 #####################################################
 ## DISCLAIMER: IL CODICE E` SOLO DI TESTING! 
-# NON GIUDICARLO GENTILMENTE, POI LO SISTEMO :)
+# NON GIUDICARLO, POI LO SISTEMO :)
 ##
 ##
 ##  pip install torch==1.3.0+cu100 torchvision==0.4.1+cu100 -f https://download.pytorch.org/whl/torch_stable.html
@@ -18,6 +18,10 @@ from .Decoder.IDecoder import IDecoder
 from .Encoder.IEncoder import IEncoder
 from .Attention.IAttention import IAttention
 import numpy as np
+from PIL import Image
+from torchvision import transforms
+from torchvision.utils import save_image
+import matplotlib.pyplot as plt
 
 class CaRNet(nn.Module):
     
@@ -141,12 +145,12 @@ class CaRNet(nn.Module):
         """
         
         # Initialize Loss: CrossEntropyLoss -> Softmax + NegativeLogLikelihoodLoss 
-        # Q. Why ignore_index is setted to <SOS> instead of <PAD>?
+        # Q. Why ignore_index is setted to <START> instead of <PAD>?
         # A. In the training, both output of the CaRNet and Target label start as padded tensor, but when we compute the loss it will evaluate the tensor with pack_padded_sequence.
-        #       And since <SOS> token is hardcoded as output at t_0 we could avoid the computation of loss on it, since will be 0 fover.                     
+        #       And since <START> token is hardcoded as output at t_0 we could avoid the computation of loss on it, since will be 0 fover.                     
         
-        criterion = nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<SOS>"],reduction="sum").cuda() if self.device.type == "cuda"  \
-                                            else nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<SOS>"],reduction="sum")
+        criterion = nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<START>"],reduction="sum").cuda() if self.device.type == "cuda"  \
+                                            else nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<START>"],reduction="sum")
         
         # initializing some elements
         best_val_acc = -1.  # the best accuracy computed on the validation data
@@ -209,6 +213,19 @@ class CaRNet(nn.Module):
                     self.C.eval()
                     self.R.eval()
                     
+                    with torch.no_grad():
+                    # self.C.eval()
+                    # self.R.eval()
+                    # features = self.C(images)
+                    # import random
+                    # numb = random.randint(0,2)
+                    # caption = self.R.generate_caption(features[numb],30)
+                    # print(vocabulary.rev_translate(captions_ids[numb]))
+                    # print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
+                    # self.C.train()
+                    # self.R.train()
+                        self.eval(images[0])
+                    
                     # Compute captions as ids for all the training images
                     projections = self.C(images)
                     
@@ -243,16 +260,17 @@ class CaRNet(nn.Module):
                 best_val_acc = val_acc
                 best_epoch = e + 1
                 with torch.no_grad():
-                    self.C.eval()
-                    self.R.eval()
-                    features = self.C(images)
-                    import random
-                    numb = random.randint(0,2)
-                    caption = self.R.generate_caption(features[numb],30)
-                    print(vocabulary.rev_translate(captions_ids[numb]))
-                    print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
-                    self.C.train()
-                    self.R.train()
+                    # self.C.eval()
+                    # self.R.eval()
+                    # features = self.C(images)
+                    # import random
+                    # numb = random.randint(0,2)
+                    # caption = self.R.generate_caption(features[numb],30)
+                    # print(vocabulary.rev_translate(captions_ids[numb]))
+                    # print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
+                    # self.C.train()
+                    # self.R.train()
+                    self.eval(images)
                 
                 self.save("/content/drive/MyDrive/Progetti/Neural Networks/.saved")
 
@@ -304,6 +322,33 @@ class CaRNet(nn.Module):
             self.R.train()
         return acc
     
+    def eval(self, image: Image.Image):
+        # enforcing evaluation mode
+        self.C.eval()
+        self.R.eval()  
+        plt.show()
+        image = image.resize([self.attention.number_of_splits * 24, self.attention.number_of_splits * 24], Image.LANCZOS)
+
+        word = "<START>"
+        t=0
+        
+        while word != "<END>":
+            if t > 50:
+                break
+            plt.subplot(np.ceil(len(words) / 5.), 5, t + 1)
+
+            plt.text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
+            plt.imshow(image)
+            current_alpha = alphas[t, :]
+            alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
+            if t == 0:
+                plt.imshow(alpha, alpha=0)
+            else:
+                plt.imshow(alpha, alpha=0.8)
+            plt.set_cmap(cm.Greys_r)
+            plt.axis('off')
+        plt.show()
+        
 # Example of usage
 if __name__ == "__main__":
     from torch.utils.data import DataLoader

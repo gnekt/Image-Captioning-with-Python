@@ -29,7 +29,7 @@ if __name__ == "__main__":
                                                 padding_index= vocabulary.predefined_token_idx()["<PAD>"],
                                                 vocab_size= len(vocabulary.word2id.keys()),
                                                 embedding_dim= vocabulary.embeddings.shape[1],
-                                                device="cuda:0"
+                                                device="cpu"
                                             )
     # Load the NeuralNet
     # net = FactoryNeuralNet(NeuralNet.CaRNet)(

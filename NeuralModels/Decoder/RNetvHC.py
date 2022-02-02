@@ -50,7 +50,7 @@ class RNetvHC(nn.Module):
         """Compute the forward operation of the RNN.
                 input of the LSTM cell for each time step:
                     t_{-1}: NONE 
-                    t_0: Deterministict <SOS> 
+                    t_0: Deterministict <START> 
                     .
                     .
                     .
@@ -63,7 +63,7 @@ class RNetvHC(nn.Module):
             
             captions (torch.Tensor): `(batch_dim, max_captions_length, embedding_dim)`
                 The caption associated to each image of the batch. 
-                    _REMARK Each caption is in the full form: <SOS> + .... + <EOS>_
+                    _REMARK Each caption is in the full form: <START> + .... + <END>_
                     REMARK The Tensor is padded with zeros
                     
             caption_length (List(int)): 
@@ -74,8 +74,8 @@ class RNetvHC(nn.Module):
             (torch.Tensor): The hidden state of each time step from t_1 to t_N. 
             
             (List(int)): The length of each decoded caption. 
-                REMARK The <SOS> is provided as input at t_0.
-                REMARK The <EOS> token will be removed from the input of the LSTM.
+                REMARK The <START> is provided as input at t_0.
+                REMARK The <END> token will be removed from the input of the LSTM.
         """             
         # Check if encoder_dim and self.hidden_dim are equal, assert by construction
         if images.shape[1] != self.hidden_dim:
@@ -90,12 +90,12 @@ class RNetvHC(nn.Module):
         # Initialize the hidden state and the cell state at time t_{-1}
         _h, _c = (images, images) #  In: ((batch_dim, hidden_dim),(batch_dim, hidden_dim)) -> Out ((batch_dim, hidden_dim), (batch_dim, hidden_dim))
         
-        # Deterministict <SOS> Output as first word of the caption t_{0}
+        # Deterministict <START> Output as first word of the caption t_{0}
         start = torch.zeros(self.vocab_size)
         start[1] = 1
         start = start.to(self.device)  # Out: (1, vocab_size)
         
-        # Bulk insert of <SOS> to all the elements of the batch 
+        # Bulk insert of <START> to all the elements of the batch 
         outputs = start.repeat(batch_dim,1,1).to(self.device) # Out: (batch_dim, 1, vocab_size)
           
         # Feed LSTMCell with image features and retrieve the state
@@ -125,10 +125,10 @@ class RNetvHC(nn.Module):
         
             (torch.Tensor): `(1, <variable>)`
                 The caption associated to the image given. 
-                    REMARK It includes <SOS> at t_0 by default.
+                    REMARK It includes <START> at t_0 by default.
         """
         
-        sampled_ids = [torch.tensor([1]).to(self.device)] # Hardcoded <SOS>
+        sampled_ids = [torch.tensor([1]).to(self.device)] # Hardcoded <START>
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1)) # Out: (1, embedding_dim)
         with torch.no_grad(): 
             _h ,_c = (image.unsqueeze(0),image.unsqueeze(0))

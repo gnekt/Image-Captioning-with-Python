@@ -44,7 +44,7 @@ class IDecoder(nn.Module):
             
             captions (torch.Tensor): `(batch_dim, max_captions_length, embedding_dim)`
                 The caption associated to each image of the batch. 
-                    _REMARK Each caption is in the full form: <SOS> + .... + <EOS>_
+                    _REMARK Each caption is in the full form: <START> + .... + <END>_
                 
             caption_length (list(int)): 
                 The length of each caption in the batch.
@@ -54,8 +54,8 @@ class IDecoder(nn.Module):
             (torch.Tensor): The hidden state of each time step from t_1 to t_N. 
             
             (list(int)): The length of each decoded caption. 
-                REMARK The <SOS> is provided as input at t_0.
-                REMARK The <EOS> token will be removed from the input of the LSTM.
+                REMARK The <START> is provided as input at t_0.
+                REMARK The <END> token will be removed from the input of the LSTM.
         """             
         pass
     
@@ -74,6 +74,6 @@ class IDecoder(nn.Module):
         
             (torch.Tensor): `(1, <variable>)`
                 The caption associated to the image given. 
-                    REMARK It includes <SOS> at t_0 by default.
+                    REMARK It includes <START> at t_0 by default.
         """
         pass
