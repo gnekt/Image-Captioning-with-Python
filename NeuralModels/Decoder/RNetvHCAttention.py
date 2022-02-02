@@ -38,6 +38,8 @@ class RNetvHCAttention(nn.Module):
         
         self.encoder_dim = attention.encoder_dim
         
+        self.vocab_size = vocab_size
+        
         # The initial memory state and hidden state of the LSTM are predicted by an average of the annotation vectors fed through two separate MLPs (init,c and init,h):
         self.h_0 = nn.Linear(self.encoder_dim, hidden_dim)
         self.c_0 = nn.Linear(self.encoder_dim, hidden_dim)
@@ -56,14 +58,14 @@ class RNetvHCAttention(nn.Module):
         """Init hidden and cell state at t_0 
 
         Args:
-            images (torch.Tensor): `(batch_dim, H_portions, W_portions, encoder_dim)`
+            images (torch.Tensor): `(batch_dim, H_portions * W_portions, encoder_dim)`
                 The images coming from the encoder.
 
         Returns:
             (torch.Tensor, torch.Tensor): `[(batch_dim, hidden_dim), (batch_dim, hidden_dim)]`
                 Hiddent state and cell state ready for the 1st input
         """
-        images = images.mean(dim=1)
+        images = images.mean(dim=1) # Dim=0 -> batch_dim, Dim=1 -> H_portions * W_portions, Dim=2 -> encoder_dim
         return self.h_0(images), self.c_0(images)
     
     
@@ -111,10 +113,12 @@ class RNetvHCAttention(nn.Module):
         _h, _c = self.init_h_0_c_0(images) # _h : (batch_dim, hidden_dim), _c : (batch_dim, hidden_dim)
         
         # Deterministict <SOS> Output as first word of the caption t_{0}
-        start = self.words_embedding(torch.LongTensor([1]).to(self.device))  # Get the embeddings of the token <SOS>
+        start = torch.zeros(self.vocab_size).unsqueeze(0)
+        start[0][1] = 1
+        start = start.to(self.device)  # Out: (1, vocab_size)
         
-        # Bulk insert of <SOS> embeddings to all the elements of the batch 
-        outputs = start.repeat(batch_dim,1,1).to(self.device) 
+        # Bulk insert of <SOS> to all the elements of the batch 
+        outputs = start.repeat(batch_dim,1,1).to(self.device) # Out: (batch_dim, 1, vocab_size)
           
         # Feed LSTMCell with image features and retrieve the state
         
@@ -124,7 +128,7 @@ class RNetvHCAttention(nn.Module):
         for idx in range(0,inputs.shape[1]): 
             attention_encoding, _ = self.attention(images, _h)
             _h, _c = self.lstm_unit(torch.cat([attention_encoding,inputs[:,idx,:]], dim=1), (_h,_c))  # inputs[:,idx,:]: for all the captions in the batch, pick the embedding vector of the idx-th word in all the captions
-            _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim)
+            _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim), Out: (batch_dim, vocab_size)
             outputs = torch.cat((outputs,_outputs.unsqueeze(1)),dim=1) # Append in dim `1` the output of the LSTMCell for all the elements in batch
         
         return outputs, list(map(lambda length: length-1, captions_length))  

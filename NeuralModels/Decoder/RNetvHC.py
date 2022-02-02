@@ -33,7 +33,7 @@ class RNetvHC(nn.Module):
         
         self.device = torch.device(device)
         self.hidden_dim = hidden_dim
-        
+        self.vocab_size = vocab_size
         # Embedding layer that turns words into a vector.
         self.words_embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_index)
         
@@ -91,10 +91,12 @@ class RNetvHC(nn.Module):
         _h, _c = (images, images) #  In: ((batch_dim, hidden_dim),(batch_dim, hidden_dim)) -> Out ((batch_dim, hidden_dim), (batch_dim, hidden_dim))
         
         # Deterministict <SOS> Output as first word of the caption t_{0}
-        start = self.words_embedding(torch.LongTensor([1]).to(self.device))  # Out: (1, embedding_dim)
+        start = torch.zeros(self.vocab_size)
+        start[1] = 1
+        start = start.to(self.device)  # Out: (1, vocab_size)
         
-        # Bulk insert of <SOS> embeddings to all the elements of the batch 
-        outputs = start.repeat(batch_dim,1,1).to(self.device)  # Out: (batch_dim, 1, embedding_dim)
+        # Bulk insert of <SOS> to all the elements of the batch 
+        outputs = start.repeat(batch_dim,1,1).to(self.device) # Out: (batch_dim, 1, vocab_size)
           
         # Feed LSTMCell with image features and retrieve the state
         
@@ -103,7 +105,7 @@ class RNetvHC(nn.Module):
                 
         for idx in range(0,inputs.shape[1]): 
             _h, _c = self.lstm_unit(inputs[:,idx,:], (_h,_c))  # inputs[:,idx,:]: for all the captions in the batch, pick the embedding vector of the idx-th word in all the captions
-            _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim)
+            _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim), Out: (batch_dim, vocab_size)
             outputs = torch.cat((outputs,_outputs.unsqueeze(1)),dim=1) # Append in dim `1` the output of the LSTMCell
         
         return outputs, list(map(lambda length: length-1, captions_length))  

@@ -13,7 +13,7 @@ cli = Cli(description='A CLI tool')
 if __name__ == "__main__":
     
     dataset = MyDataset("./dataset", percentage=1)
-    vocabulary = Vocabulary(dataset,reload=True) 
+    vocabulary = Vocabulary(dataset) 
     
     # Load Encoder and Decoder models
     attention = FactoryAttention(Attention.Attention)

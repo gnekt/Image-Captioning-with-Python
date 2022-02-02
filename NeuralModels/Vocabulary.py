@@ -9,20 +9,29 @@ import torch
 from typing import List
 
 class Vocabulary():
-    # The vocabulary implementation is done with a pre-trained word embedding GLOVE50d
-    # each word is represented by a record in a dataframe with this structure
-    
-    
-    def __init__(self, source_dataset: MyDataset, verbose: bool = False, reload: bool = False):
+    """
+        Implementation of the vocabulary.
         
-        self.enriched = False       # Tell that all the word coming from the dataset are in the vocabulary if it is set to True
-        self._make_enrich = False         # Allow the user to enrich the vocabulary if it is set to True
-        # Check if the enriched vocabulary(glove + PAD + SOS + EOS + UNK + dataset vocabulary) already exists
-        if os.path.exists(".saved/rich_embeddings_v1.pt") and os.path.exists(".saved/rich_word2id_v1.pt") and not reload:
-            self.embeddings = torch.load(".saved/rich_embeddings_v1.pt")
-            self.word2id = torch.load(".saved/rich_word2id_v1.pt")
-            self.enriched = True
-            return
+        Assumption: 
+        
+            1) The vocabulary is enriched with 4 special words:\n
+                <PAD>: Padding ------> ID: 0\n
+                <SOS>: Start Of String ------> ID: 1\n
+                <EOS>: End Of String ------> ID: 2\n
+                <UNK>: Out of vocabulary word ------> ID: 3\n
+
+                Example: <SOS> I Love Pizza <EOS> <PAD> <PAD> -> Translate into ids -> 1 243 5343 645655 2 0 0 
+    """
+    
+    
+    def __init__(self, source_dataset: MyDataset):
+        """[summary]
+
+        Args:
+            source_dataset (MyDataset): [description]
+        """
+        
+        self.ready = False       # Tell that all the word coming from the dataset are in the vocabulary if it is set to True
         
         # Since the constructor arrived here, we need to load for the 1st time all the possible words from the dataset
         dataset_words = source_dataset.get_all_distinct_words_in_dataset()
