@@ -299,7 +299,29 @@ class CaRNet(nn.Module):
         self.R.train()
         return acc
     
-    
+    def generate_image_caption(self, image: Image, image_name: str = "caption.png"):
+        """[summary]
+
+        Args:
+            image_name (str, optional): [description]. Defaults to "caption.png".
+        """
+        plt.figure(figsize=(8, 8))
+        plt.imshow(image.cpu())
+        plt.title(caption)
+        plt.savefig("caption.png")
+        plt.close()
+        
+    def generate_image_attention(self, image: Image, image_name: str = "caption.png"):
+        """[summary]
+
+        Args:
+            image_name (str, optional): [description]. Defaults to "caption.png".
+        """
+        plt.figure(figsize=(8, 8))
+        plt.imshow(image.cpu())
+        plt.title(caption)
+        plt.savefig("caption.png")
+        plt.close()
     
     # Inspiration is taken from this example https://www.kaggle.com/mdteach/image-captioning-with-attention-pytorch
     # Thanks ABISHEK BASHYAL :)
@@ -330,23 +352,18 @@ class CaRNet(nn.Module):
         caption, alphas = self.R.generate_caption(features,MAX_CAPTION_LENGTH)
         caption = vocabulary.rev_translate(caption[0])
         
-        plt.figure(figsize=(8, 8))
-        plt.imshow(image.cpu())
-        plt.title(caption)
-        plt.savefig("caption.png")
-        plt.close()
         
         fig = plt.figure(figsize=(15, 15))
         _caption_len = len(caption)
         for t in range(_caption_len):
             _att = alphas[t].reshape(self.attention.number_of_splits,self.attention.number_of_splits)
             
-            plt.subplot(_caption_len//2, _caption_len//2, t+1)
+            ax = fig.add_subplot(_caption_len//2, _caption_len//2, t+1)
             
-            plt.text(0, 1, f"{caption[t]}", color='black', backgroundcolor='white', fontsize=12)
+            ax.set_title(f"{caption[t]}", fontsize=12)
             
-            plt.imshow(_t_image.cpu())
-            plt.imshow(_att, cmap='gray', alpha=0.7)    
+            img = ax.imshow(image.cpu())
+            ax.imshow(_att, cmap='gray', alpha=0.7, extent=img.get_extent())
         plt.tight_layout()
         plt.savefig("attention.png")
         plt.close()
