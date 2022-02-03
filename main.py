@@ -10,7 +10,7 @@ from NeuralModels.Vocabulary import Vocabulary
 
 if __name__ == "__main__":
     
-    dataset = MyDataset("./dataset", percentage=1)
+    dataset = MyDataset("./dataset/flickr30k_images", percentage=8)
     vocabulary = Vocabulary(dataset) 
     
     # Load Encoder and Decoder models
@@ -29,7 +29,7 @@ if __name__ == "__main__":
                                                 padding_index= vocabulary.predefined_token_idx()["<PAD>"],
                                                 vocab_size= len(vocabulary.word2id.keys()),
                                                 embedding_dim= vocabulary.embeddings.shape[1],
-                                                device="cpu"
+                                                device="cuda:0"
                                             )
     # Load the NeuralNet
     # net = FactoryNeuralNet(NeuralNet.CaRNet)(
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     #                                             device="cpu"
     #                                         )
     
-    dc = dataset.get_fraction_of_dataset(percentage=2, delete_transfered_from_source=True)
+    dc = dataset.get_fraction_of_dataset(percentage=1, delete_transfered_from_source=True)
     df = dataset.get_fraction_of_dataset(percentage=1, delete_transfered_from_source=True)
     # use dataloader facilities which requires a preprocessed dataset
        

@@ -72,8 +72,9 @@ class CaRNet(nn.Module):
             bool: If True: Net saved correctly. False otherwise.
         """
         try:
-            torch.save(self.C.state_dict(), f"{file_path}/{self.name_net}_C.pth")
-            torch.save(self.R.state_dict(), f"{file_path}/{self.name_net}_R.pth")
+            # Name_type_encoderdim_embeddingdim_hiddendim_attentiondim
+            torch.save(self.C.state_dict(), f"{file_path}/{self.name_net}_{self.C.encoder_dim}_{self.R.hidden_dim}_{self.attention.attention_dim if self.attention is not None else 0}_C.pth")
+            torch.save(self.R.state_dict(), f"{file_path}/{self.name_net}_{self.C.encoder_dim}_{self.R.hidden_dim}_{self.attention.attention_dim if self.attention is not None else 0}_R.pth")
         except Exception as ex:
             print(ex)
             return False
@@ -241,26 +242,13 @@ class CaRNet(nn.Module):
                     # printing (mini-batch related) stats on screen
                     print("  mini-batch:\tloss={0:.4f}, tr_acc={1:.5f}".format(loss.item(), batch_train_acc))
                     
-            val_acc = self.eval_classifier(validation_set)
+            val_acc = self.eval_classifier(validation_set,vocabulary)
 
             # # saving the model if the validation accuracy increases
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
-                best_epoch = e + 1
-                with torch.no_grad():
-                    # self.C.eval()
-                    # self.R.eval()
-                    # features = self.C(images)
-                    # import random
-                    # numb = random.randint(0,2)
-                    # caption = self.R.generate_caption(features[numb],30)
-                    # print(vocabulary.rev_translate(captions_ids[numb]))
-                    # print(vocabulary.rev_translate(caption.type(torch.int16)[0]))
-                    # self.C.train()
-                    # self.R.train()
-                    self.eval(images[9], vocabulary)
-                
-                self.save("/content/drive/MyDrive/Progetti/Neural Networks/.saved")
+                best_epoch = e + 1                
+                self.save("./.saved")
 
             epoch_train_loss /= epoch_num_train_examples
 
@@ -271,19 +259,19 @@ class CaRNet(nn.Module):
                         epoch_train_acc / epoch_num_train_examples, val_acc))
 
 
-    def eval_classifier(self, data_set):
+    def eval_classifier(self, data_set, vocabulary):
         """Evaluate the classifier on the given data set."""
 
         # checking if the classifier is in 'eval' or 'train' mode (in the latter case, we have to switch state)
-        training_mode_originally_on = self.C.training and self.R.training
-        if training_mode_originally_on:
-            self.C.eval()
-            self.R.eval()  # enforcing evaluation mode
+        
+    
+        self.C.eval()
+        self.R.eval()  # enforcing evaluation mode
 
         
 
         with torch.no_grad():  # keeping off the autograd engine
-
+            _images = None
             # loop on mini-batches to accumulate the network outputs (creating a new iterator)
             for images,captions_ids,captions_length  in data_set:
                 images = images.to(self.device)
@@ -300,14 +288,15 @@ class CaRNet(nn.Module):
                     # Fill the remaining portion of caption eventually with zeros
                     # Accuracy is not altered since if the length of caption is smaller than the captions_target_ids(padded), feed it with PAD is valid.
 
+                _images= images[0]
                 captions_output_padded = captions_output.type(torch.int32).to(self.device) # From list of tensors to tensors
                 
                 # computing performance
                 acc = self.__accuracy(captions_output_padded.squeeze(1), captions_ids, captions_length)
-
-        if training_mode_originally_on:
-            self.C.train()  # restoring the training state, if needed
-            self.R.train()
+            
+            self.eval(_images,vocabulary)
+        self.C.train()  # restoring the training state, if needed
+        self.R.train()
         return acc
     
     
@@ -337,23 +326,30 @@ class CaRNet(nn.Module):
         image[2] += 0.406
         
         image = image.permute((1,2,0))
-        
+        _t_image = image
         caption, alphas = self.R.generate_caption(features,MAX_CAPTION_LENGTH)
         caption = vocabulary.rev_translate(caption[0])
+        
+        plt.figure(figsize=(8, 8))
+        plt.imshow(image.cpu())
+        plt.title(caption)
+        plt.savefig("caption.png")
+        plt.close()
         
         fig = plt.figure(figsize=(15, 15))
         _caption_len = len(caption)
         for t in range(_caption_len):
             _att = alphas[t].reshape(self.attention.number_of_splits,self.attention.number_of_splits)
             
-            ax = fig.add_subplot(_caption_len//2, _caption_len//2, t+1)
+            plt.subplot(_caption_len//2, _caption_len//2, t+1)
             
-            ax.set_title(caption[t])
+            plt.text(0, 1, f"{caption[t]}", color='black', backgroundcolor='white', fontsize=12)
             
-            img = ax.imshow(image)
-            ax.imshow(_att, cmap='gray', alpha=0.7, extent=img.get_extent())    
+            plt.imshow(_t_image.cpu())
+            plt.imshow(_att, cmap='gray', alpha=0.7)    
         plt.tight_layout()
-        plt.savefig("test.png")
+        plt.savefig("attention.png")
+        plt.close()
         
 # Example of usage
 if __name__ == "__main__":

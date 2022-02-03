@@ -3,7 +3,7 @@ import torch
 import torchvision.models as models
 
 class CResNet50Attention(nn.Module):
-    def __init__(self, encoder_dim: int, number_of_splits: int = 3, device: str = "cpu"):
+    def __init__(self, encoder_dim: int, number_of_splits: int = 7, device: str = "cpu"):
         """Constructor of the Encoder NN
 
         Args:
@@ -12,7 +12,7 @@ class CResNet50Attention(nn.Module):
             number_of_splits (int):
                 How many pieces do you want to split the images, for border.
                     Examples:
-                        number_of_splits = 3 -> The images will be splitted into 9 pieces (3x3). 
+                        number_of_splits = 7 -> The images will be splitted into 49 pieces (7x7). 
                 
             device (str, optional): Default "cpu".
                 The device on which the operations will be performed. 
@@ -24,7 +24,7 @@ class CResNet50Attention(nn.Module):
         for param in resnet.parameters(): # Freezing weights 
             param.requires_grad_(False)
         
-        modules = list(resnet.children())[:-2]   # Expose the last convolutional layer. 512 Filters of size 3x3. Output of the ConvLayer -> (H_in/32,W_in/32,512) 
+        modules = list(resnet.children())[:-2]   # Expose the last convolutional layer. 2048 Filters of size 1x1. Output of the ConvLayer -> (H_in/32,W_in/32,2048) 
         
         self.encoder_dim = 2048 
         
@@ -35,8 +35,6 @@ class CResNet50Attention(nn.Module):
         
         self.resnet = nn.Sequential(*modules)
         
-        # Applies a 2D adaptive average pooling over an input signal composed of several input planes.
-        self.avg = torch.nn.AdaptiveAvgPool2d((number_of_splits, number_of_splits)) # IN : (batch_dim, 2048, Heigth/32, Width/32) -> OUT : (batch_dim, 2048, H_splits, W_splits)
         
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """Forward operation of the nn
@@ -50,7 +48,6 @@ class CResNet50Attention(nn.Module):
                 Features Projection Tensor 
         """
         
-        features = self.resnet(images) # Out: (batch_dim, Heigth/32, Width/32, 512) 
-        features = self.avg(features)  # Out: (batch_dim, 2048, H_splits, W_splits)
+        features = self.resnet(images) # Out: (batch_dim, 2048,Heigth/32, Width/32) 
         features = features.permute(0, 2, 3, 1)  # (batch_dim, H_splits, W_splits, 2048)
         return features

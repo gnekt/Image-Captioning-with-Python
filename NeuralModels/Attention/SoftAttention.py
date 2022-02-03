@@ -9,7 +9,7 @@ class SoftAttention(nn.Module):
         Simple implementation of Bahdanau Attention model.
     """
     
-    def __init__(self, encoder_dim: int , hidden_dim: int, attention_dim: int, number_of_splits: int = 3):
+    def __init__(self, encoder_dim: int , hidden_dim: int, attention_dim: int, number_of_splits: int = 7):
         """Constructor for a SoftAttention model 
 
         Args:
@@ -40,10 +40,6 @@ class SoftAttention(nn.Module):
         
         self.out = nn.Softmax(dim=1)
         
-        # the soft attention model predicts a gating scalar β from previous hidden state ht_1 at each time step t
-        # Par. 4.2.1
-        self.f_beta = nn.Linear(hidden_dim, self.encoder_dim)
-        self.sigmoid = nn.Sigmoid()
         
     def forward(self, images: torch.Tensor, lstm_hidden_states: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         """Compute z_t given images and hidden state at t-1 for all the element in the batch.
@@ -64,16 +60,12 @@ class SoftAttention(nn.Module):
         _lstm_attention = self.lstm_hidden_state_attention_projection(lstm_hidden_states) # IN: (batch_dim, hidden_dim) -> Out: (batch_size, attention_dim)
         
         # (batch_size, image_portions, attention_dim) + (batch_size, 1, attention_dim) -> Broadcast on dim 2 -> (batch_size, image_portions, attention_dim)
-        _attention = self.ReLU(self.attention(_images_attention + _lstm_attention.unsqueeze(1)).squeeze(2)) # IN: (batch_dim, image_portions, attention_dim) -> Out: (batch_size, image_portions)
+        _attention = self.attention(self.ReLU(_images_attention + _lstm_attention.unsqueeze(1))).squeeze(2) # IN: (batch_dim, image_portions, attention_dim) -> Out: (batch_size, image_portions)
         
         _alphas_t = self.out(_attention) # Out: (batch_dim, image_portions)
         
-        betas_t = self.f_beta(lstm_hidden_states) # IN: (batch_dim, hidden_dim) -> Out: (batch_dim, encoder_dim)
-        
-        gate = self.sigmoid(betas_t) 
-
         # Retrieve z_t
-        _z_t = gate * (images * _alphas_t.unsqueeze(2)).sum(dim=1) # (batch_dim, encoder_dim) * (batch_dim, encoder_dim)
+        attention_weighted_encoding = (images * _alphas_t.unsqueeze(2)).sum(dim=1) # Out: (batch_dim, encoder_dim)
         
-        return _z_t, _alphas_t
+        return attention_weighted_encoding, _alphas_t
         

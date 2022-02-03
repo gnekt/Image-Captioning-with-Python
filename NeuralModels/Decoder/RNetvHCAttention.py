@@ -40,6 +40,8 @@ class RNetvHCAttention(nn.Module):
         
         self.vocab_size = vocab_size
         
+        self.hidden_dim = hidden_dim
+        
         # The initial memory state and hidden state of the LSTM are predicted by an average of the annotation vectors fed through two separate MLPs (init,c and init,h):
         self.h_0 = nn.Linear(self.encoder_dim, hidden_dim)
         self.c_0 = nn.Linear(self.encoder_dim, hidden_dim)
@@ -52,7 +54,11 @@ class RNetvHCAttention(nn.Module):
         # The linear layer that maps the hidden state output dimension
         # to the number of words we want as output, vocab_size
         self.linear_1 = nn.Linear(hidden_dim, vocab_size)
-                
+        
+        # the soft attention model predicts a gating scalar β from previous hidden state ht_1 at each time step t
+        # Par. 4.2.1
+        self.f_beta = nn.Linear(hidden_dim, self.encoder_dim)
+        self.sigmoid = nn.Sigmoid()
 
     def init_h_0_c_0(self, images: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Init hidden and cell state at t_0 
@@ -130,11 +136,14 @@ class RNetvHCAttention(nn.Module):
         
         # How it works the loop?
         # For each time step t \in {0, N-1}, where N is the caption length 
-                
+        
+        
         for idx in range(0,inputs.shape[1]): 
             attention_encoding, alphas_t_i = self.attention(images, _h) # Out: attention_encoding->(batch_dim,encoder_dim), alphas_t_i->(batch_dim, number_of_splits)
+            gate = self.sigmoid(self.f_beta(_h))  # IN: (batch_dim, hidden_dim) -> Out: (batch_dim, encoder_dim)
+            attention_encoding = gate * attention_encoding # Gating z_t
             alphas_t[:,idx,:] = alphas_t_i
-            _h, _c = self.lstm_unit(torch.cat([attention_encoding,inputs[:,idx,:]], dim=1), (_h,_c))  # inputs[:,idx,:]: for all the captions in the batch, pick the embedding vector of the idx-th word in all the captions
+            _h, _c = self.lstm_unit(torch.cat([inputs[:,idx,:], attention_encoding], dim=1), (_h,_c))  # inputs[:,idx,:]: for all the captions in the batch, pick the embedding vector of the idx-th word in all the captions
             _outputs = self.linear_1(_h) # In: (batch_dim, hidden_dim), Out: (batch_dim, vocab_size)
             outputs = torch.cat((outputs,_outputs.unsqueeze(1)),dim=1) # Append in dim `1` the output of the LSTMCell for all the elements in batch
         
@@ -166,15 +175,17 @@ class RNetvHCAttention(nn.Module):
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
         alphas = torch.zeros(captions_length, self.attention.number_of_splits **2) # Out: (MaxCaptionLength, number_of_splits)
         with torch.no_grad(): 
-            image = image.reshape(1,-1, image.shape[2]) # Out: (batch_dim, H_portions * W_portions, encoder_dim)
+            image = image.reshape(1,-1, image.shape[2]) # Out: (1, H_portions * W_portions, encoder_dim)
             _h, _c = self.init_h_0_c_0(image)
             for idx in range(captions_length-1):
                 attention_encoding, alphas[idx,:] = self.attention(image, _h)
-                _h, _c = self.lstm_unit(torch.cat([attention_encoding, input], dim=1), (_h ,_c))           # _h: (1, 1, hidden_dim)
+                gate = self.sigmoid(self.f_beta(_h))  # IN: (1, hidden_dim) -> Out: (1, encoder_dim)
+                attention_encoding = gate * attention_encoding # Gating z_t
+                _h, _c = self.lstm_unit(torch.cat([input,attention_encoding], dim=1), (_h ,_c))           # _h: (1, 1, hidden_dim)
                 outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
                 _ , predicted = F.softmax(outputs,dim=1).cuda().max(1)  if self.device.type == "cuda" else   F.softmax(outputs,dim=1).max(1)  # predicted: The predicted id
                 sampled_ids.append(predicted)
-                input = self.words_embedding(predicted)                       # In: (batch_dim, embedding_dim)
+                input = self.words_embedding(predicted)                       # In: (1, embedding_dim)
                 input = input.to(torch.device(self.device))                       # In: (1, 1, embedding_dim)
                 if predicted == 2:
                     break
