@@ -4,7 +4,6 @@
 # if TYPE_CHECKING:
 #     from .Dataset import MyDataset
     
-import os
 import torch
 from typing import List
 
@@ -31,9 +30,7 @@ class Vocabulary():
             source_dataset (MyDataset): [description]
         """
         
-        self.ready = False       # Tell that all the word coming from the dataset are in the vocabulary if it is set to True
-        
-        # Since the constructor arrived here, we need to load for the 1st time all the possible words from the dataset
+        # Load for the 1st time all the possible words from the dataset
         dataset_words = source_dataset.get_all_distinct_words_in_dataset()
         
         # Dictionary length 
@@ -53,10 +50,16 @@ class Vocabulary():
         for word in dataset_words:
             self.word2id[word] = counter
             counter += 1
-            
+        
+        # Identiry matrix == 1-hot vector :)
         self.embeddings = torch.eye(self.dictionary_length)
     
     def predefined_token_idx(self) -> dict:
+        """Return the predefined token indexes.
+
+        Returns:
+            dict: The token dictionary
+        """
         return {
             "<PAD>":0,
             "<START>":1,
@@ -68,7 +71,17 @@ class Vocabulary():
         """Given a sequence of word, translate into id list according to the vocabulary.
 
         Args:
-            word_sequence (str): [description]
+            word_sequence (list(str)): 
+                The sequence of words to translate
+            
+            type (str, optional): Default is complete
+                The type of translation.
+        
+        Returns:
+            (torch.Tensor): `(1,caption_length)`
+                The caption in IDs form. 
+                `if` complete: <1> + ...Caption... + <2> 
+                `else`: <1> + ...Caption...
         """
         
         # Initialize the translator
@@ -98,14 +111,18 @@ class Vocabulary():
         """Given a sequence of word, translate into id list according to the vocabulary.
 
         Args:
-            word_sequence (str): [description]
+            words_id (torch.Tensor): `(1,caption_length)`
+                The sequence of IDs.
+        Returns:
+            (List(str)):
+                The caption in words form.
         """
         # Check if the Vocabulary is enriched with all the possible word outside glove, taken from the dataset.
         return [list(self.word2id.keys())[idx] for idx in words_id[:].tolist()]   # word_id (1,caption_length)
     
     
     def __len__(self):
-        """The total number of words in this Vocabulary."""
+        """The total of words in this Vocabulary."""
 
         return len(self.word2id.keys())
     
@@ -115,19 +132,10 @@ class Vocabulary():
 
 if __name__ == '__main__':
     #Load the vocabulary
-    v = Vocabulary(verbose=True)
+    pippo = MyDataset(...)
+    v = Vocabulary(source_dataset=pippo)
     # Make a translation
     print(v.translate(["I","like","PLay","piano","."]))
-    # Enrich the vocabulary
-    v.make_enrich = True
-    dataset = ["I","Like","PLay","PIPPOplutopaperino"]
-    v.enrich(dataset)
-    v.make_enrich = False
-    # Enrich the vocabulary with a bulk insert 
-    v.make_enrich = True
-    dataset = [["I","Like","PLay","PIPPOplutopaperino"],["I","Like","PLay","pizza"]]
-    v.bulk_enrich(dataset)
-    v.make_enrich = False
     
     
     
