@@ -6,6 +6,8 @@
     
 import torch
 from typing import List
+import os
+import pickle
 
 class Vocabulary():
     """
@@ -23,12 +25,25 @@ class Vocabulary():
     """
     
     
-    def __init__(self, source_dataset): # for python > 3.9 -> def __init__(self, source_dataset: MyDataset):
-        """[summary]
+    def __init__(self, source_dataset = None): # for python > 3.9 -> def __init__(self, source_dataset: MyDataset):
+        """Vocabulary constructor
 
         Args:
-            source_dataset (MyDataset): [description]
+            source_dataset (MyDataset): 
+                The source Dataset, if None try to load a vocabulary from the hidden .saved folder
         """
+        
+        if source_dataset is None:
+            print("Try to load the vocabulary from file..")
+            
+            if not os.path.exists(".saved/word2id.pickle") or not os.path.exists(".saved/embeddings.pickle"):
+                raise FileNotFoundError("You request a loading from file but the file doesn't exist, first generate the vocabulary!")
+            
+            with open('.saved/word2id.pickle', 'rb') as word2id, open('.saved/embeddings.pickle', 'rb') as embeddings:
+                self.word2id = pickle.load(word2id)
+                self.embeddings = pickle.load(embeddings)
+                self.dictionary_length = len(self.word2id.keys())
+                return 
         
         # Load for the 1st time all the possible words from the dataset
         dataset_words = source_dataset.get_all_distinct_words_in_dataset()
@@ -53,7 +68,11 @@ class Vocabulary():
         
         # Identiry matrix == 1-hot vector :)
         self.embeddings = torch.eye(self.dictionary_length)
-    
+
+        with open('.saved/word2id.pickle', 'wb') as word2id, open('.saved/embeddings.pickle', 'wb') as embeddings:
+            pickle.dump(self.word2id, word2id, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.embeddings, embeddings, protocol=pickle.HIGHEST_PROTOCOL)
+            
     def predefined_token_idx(self) -> dict:
         """Return the predefined token indexes.
 
@@ -117,7 +136,6 @@ class Vocabulary():
             (List(str)):
                 The caption in words form.
         """
-        # Check if the Vocabulary is enriched with all the possible word outside glove, taken from the dataset.
         return [list(self.word2id.keys())[idx] for idx in words_id[:].tolist()]   # word_id (1,caption_length)
     
     
