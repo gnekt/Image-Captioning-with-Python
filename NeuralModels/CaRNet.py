@@ -385,7 +385,7 @@ class CaRNet(nn.Module):
                 for idx, _ in enumerate(range(projections.shape[0])):
                     # OUT: (1, CAPTION_LENGTH)
                     if self.attention == True:
-                        _caption_no_pad, _ = self.R.generate_caption(projections[idx].unsqueeze(0),captions_ids.shape[1]) # IN: ((H_portions, W_portions, encoder_dim), 1)
+                        _caption_no_pad, _ = self.R.generate_caption(projections[idx].unsqueeze(0),captions_ids.shape[1]) # IN: ((1, H_portions, W_portions, encoder_dim), 1)
                     else:
                         _caption_no_pad = self.R.generate_caption(projections[idx].unsqueeze(0),captions_ids.shape[1]) # IN: ((1, encoder_dim), 1)
                    # Add for each batch element the caption. The surplus element are already feeded with zeros
@@ -425,7 +425,6 @@ class CaRNet(nn.Module):
         features = self.C(image.unsqueeze(0))
         
         if self.attention == True:
-            features = features.reshape(1,-1,self.C.encoder_dim) 
             caption, alphas = self.R.generate_caption(features,MAX_CAPTION_LENGTH)
         else:
             caption = self.R.generate_caption(features,MAX_CAPTION_LENGTH)
@@ -477,7 +476,7 @@ class CaRNet(nn.Module):
         _caption_len = len(caption)
         for t in range(_caption_len):
             # from 49 element to 7x7
-            _att = alphas[t].reshape(self.attention.number_of_splits,self.attention.number_of_splits)
+            _att = alphas[t].reshape(self.R.attention.number_of_splits,self.R.attention.number_of_splits)
             
             # Add a subplot accordly to the word in caption position
             ax = fig.add_subplot(_caption_len//2, _caption_len//2, t+1)

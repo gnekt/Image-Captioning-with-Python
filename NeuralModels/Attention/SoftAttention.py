@@ -38,7 +38,7 @@ class SoftAttention(nn.Module):
                 \n\t Attention dimension: {attention_dim},\
                 \n\t Encoder dimension: {encoder_dim},\
                 \n\t LSTM Capacity: {hidden_dim},\
-                \n\t Alphas: {number_of_splits}")
+                \n\t Alphas: {number_of_splits**2}")
         
         self.attention = nn.Linear(attention_dim, 1)
         

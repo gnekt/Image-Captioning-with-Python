@@ -35,8 +35,8 @@ def parse_command_line_arguments():
     parser.add_argument('--image_path', type=str, default="",
                         help = "The absolute path of the image that we want to retrieve the caption. Used only if mode = eval (Default: ''")
     
-    parser.add_argument('--splits', type=(float), default=[.6,.3,.1],
-                        help='Fraction of data to be used in train set, val set and test set (default: [.6,.3,.1])')
+    parser.add_argument('--splits', type=(float), default=[60,30,10],
+                        help='Fraction of data to be used in train set, val set and test set (default: [60,30,10])')
     
     parser.add_argument('--batch_size', type=int, default=32,
                         help='mini-batch size (default: 32)')

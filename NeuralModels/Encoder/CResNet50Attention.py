@@ -31,7 +31,7 @@ class CResNet50Attention(nn.Module):
         self.number_of_splits = number_of_splits
         
         print(f"Construction of CResNet50Attention:\n \
-                Encoder dimension: {encoder_dim},\n \
+                Encoder dimension: {self.encoder_dim},\n \
                 Number of splits: {number_of_splits**2},\n \
                 Device: {device}")
         # Q. Why (H_in/32, W_in/32)

@@ -161,7 +161,7 @@ class RNetvHCAttention(nn.Module):
 
         Args:
         
-            image (torch.Tensor):  `(batch_dim, H_portions, W_portions, encoder_dim)`
+            image (torch.Tensor):  `(1, H_portions, W_portions, encoder_dim)`
                 The image.
                 
             captions_length (int): 
@@ -182,7 +182,7 @@ class RNetvHCAttention(nn.Module):
         input = self.words_embedding(torch.LongTensor([1]).to(torch.device(self.device))).reshape((1,-1))
         alphas = torch.zeros(captions_length, self.attention.number_of_splits **2) # Out: (MaxCaptionLength, number_of_splits)
         with torch.no_grad(): 
-            image = image.reshape(1,-1, image.shape[2]) # Out: (1, H_portions * W_portions, encoder_dim)
+            image = image.reshape(1,-1, image.shape[3]) # Out: (1, H_portions * W_portions, encoder_dim)
             _h, _c = self.init_h_0_c_0(image)
             for idx in range(captions_length-1):
                 attention_encoding, alphas[idx,:] = self.attention(image, _h)
