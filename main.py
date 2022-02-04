@@ -15,34 +15,35 @@ if __name__ == "__main__":
     
     # Load Encoder and Decoder models
     attention = FactoryAttention(Attention.Attention)
-    decoder = FactoryDecoder(Decoder.RNetvHCAttention)
-    encoder = FactoryEncoder(Encoder.CResNet50Attention)
+    decoder = FactoryDecoder(Decoder.RNetvI)
+    encoder = FactoryEncoder(Encoder.CResNet50)
     
-    # # Load the NeuralNet
-    net = FactoryNeuralNet(NeuralNet.CaRNet)(
-                                                encoder=encoder,
-                                                decoder=decoder,
-                                                attention=attention,
-                                                net_name="CaRNetvHCAttention",
-                                                encoder_dim= 1024,
-                                                hidden_dim= 512,
-                                                padding_index= vocabulary.predefined_token_idx()["<PAD>"],
-                                                vocab_size= len(vocabulary.word2id.keys()),
-                                                embedding_dim= vocabulary.embeddings.shape[1],
-                                                device="cuda:0"
-                                            )
-    # Load the NeuralNet
+    # # # Load the NeuralNet
     # net = FactoryNeuralNet(NeuralNet.CaRNet)(
     #                                             encoder=encoder,
     #                                             decoder=decoder,
-    #                                             net_name="CaRNetvHC",
+    #                                             attention=attention,
+    #                                             net_name="CaRNetvHCAttention",
     #                                             encoder_dim= 1024,
-    #                                             hidden_dim= 1024,
+    #                                             hidden_dim= 512,
     #                                             padding_index= vocabulary.predefined_token_idx()["<PAD>"],
     #                                             vocab_size= len(vocabulary.word2id.keys()),
     #                                             embedding_dim= vocabulary.embeddings.shape[1],
-    #                                             device="cpu"
+    #                                             device="cuda:0"
     #                                         )
+    # Load the NeuralNet
+    
+    net = FactoryNeuralNet(NeuralNet.CaRNet)(
+                                                encoder=encoder,
+                                                decoder=decoder,
+                                                net_name="CaRNetvI",
+                                                encoder_dim = vocabulary.embeddings.shape[1],
+                                                hidden_dim= 1024,
+                                                padding_index= vocabulary.predefined_token_idx()["<PAD>"],
+                                                vocab_size= len(vocabulary.word2id.keys()),
+                                                embedding_dim = vocabulary.embeddings.shape[1],
+                                                device="cuda:0"
+                                            )
     
     dc = dataset.get_fraction_of_dataset(percentage=1, delete_transfered_from_source=True)
     df = dataset.get_fraction_of_dataset(percentage=1, delete_transfered_from_source=True)

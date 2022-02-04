@@ -19,15 +19,16 @@ class CResNet50(nn.Module):
         """
         super(CResNet50, self).__init__()
         
+        self.encoder_dim = encoder_dim
         self.device = torch.device(device)
         resnet = models.resnet50(pretrained=True)
         for param in resnet.parameters(): # Freezing weights 
             param.requires_grad_(False)
         
-        modules = list(resnet.children())[:-1]   # remove last fc layer
+        modules = list(resnet.children())[:-1]   # remove last fc layer, expose the GlobalAveragePooling
         self.resnet = nn.Sequential(*modules)
         
-        self.linear = nn.Linear(resnet.fc.in_features, encoder_dim) # define a last layer 
+        self.linear = nn.Linear(resnet.fc.in_features, encoder_dim) # define a last fc layer 
         
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """Forward operation of the nn
@@ -40,13 +41,11 @@ class CResNet50(nn.Module):
             [torch.tensor]: `(batch_dim, encoder_dim)`
                 Features Projection for each image in the batch.
                 
-        To Do:
-            Commentare il forward
         """
         
-        features = self.resnet(images)
+        features = self.resnet(images) # Out: (batch_dim, 2048, 1, 1), 2048 is a Design choice of ResNet50 of last conv.layer.
         
         features = features.reshape(features.size(0), -1).to(self.device)
-        features = self.linear(features)
+        features = self.linear(features) # In: (batch_dim, 2048)
         
         return features

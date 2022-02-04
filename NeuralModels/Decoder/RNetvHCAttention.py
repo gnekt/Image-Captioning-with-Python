@@ -99,12 +99,13 @@ class RNetvHCAttention(nn.Module):
                
         Returns:
             (torch.Tensor): `(batch_dim, max_captions_length, vocab_size)`
-                The hidden state of each time step from t_1 to t_{MaxN}. 
+                The output of LSTM for each time step from t_1 to t_N, + <START> at t_0
+                    REMARK <START> is the 1st element in the output caption for each element in batch. 
                 
             (List(int)): 
                 The length of each decoded caption. 
                     REMARK The <START> is provided as input at t_0.
-                    REMARK The <END> token will be removed from the input of the LSTM.
+                    REMARK The <END> token will be removed from the inputs of the LSTM.
             
             (torch.Tensor): `(batch_dim, max_captions_length, alphas)`
                 All the alphas evaluated over timestep t (from t_0 to t_{N-1}), for each image in the batch.
@@ -181,12 +182,12 @@ class RNetvHCAttention(nn.Module):
                 attention_encoding, alphas[idx,:] = self.attention(image, _h)
                 gate = self.sigmoid(self.f_beta(_h))  # IN: (1, hidden_dim) -> Out: (1, encoder_dim)
                 attention_encoding = gate * attention_encoding # Gating z_t
-                _h, _c = self.lstm_unit(torch.cat([input,attention_encoding], dim=1), (_h ,_c))           # _h: (1, 1, hidden_dim)
+                _h, _c = self.lstm_unit(torch.cat([input,attention_encoding], dim=1), (_h ,_c))           # _h: (1, hidden_dim)
                 outputs = self.linear_1(_h)            # outputs:  (1, vocab_size)
                 _ , predicted = F.softmax(outputs,dim=1).cuda().max(1)  if self.device.type == "cuda" else   F.softmax(outputs,dim=1).max(1)  # predicted: The predicted id
                 sampled_ids.append(predicted)
                 input = self.words_embedding(predicted)                       # In: (1, embedding_dim)
-                input = input.to(torch.device(self.device))                       # In: (1, 1, embedding_dim)
+                input = input.to(torch.device(self.device))                       # In: (1, embedding_dim)
                 if predicted == 2:
                     break
             sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (1, captions_length)
