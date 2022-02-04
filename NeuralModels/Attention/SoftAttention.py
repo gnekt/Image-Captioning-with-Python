@@ -34,6 +34,12 @@ class SoftAttention(nn.Module):
         
         self.lstm_hidden_state_attention_projection = nn.Linear(hidden_dim, attention_dim)
         
+        print(f"Construction of Attention: \
+                \n\t Attention dimension: {attention_dim},\
+                \n\t Encoder dimension: {encoder_dim},\
+                \n\t LSTM Capacity: {hidden_dim},\
+                \n\t Alphas: {number_of_splits}")
+        
         self.attention = nn.Linear(attention_dim, 1)
         
         self.ReLU = nn.ReLU()

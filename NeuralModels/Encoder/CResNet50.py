@@ -25,6 +25,10 @@ class CResNet50(nn.Module):
         for param in resnet.parameters(): # Freezing weights 
             param.requires_grad_(False)
         
+        print(f"Construction of CResNet50:\n \
+                Encoder dimension: {encoder_dim},\n \
+                Device: {device}")
+        
         modules = list(resnet.children())[:-1]   # remove last fc layer, expose the GlobalAveragePooling
         self.resnet = nn.Sequential(*modules)
         

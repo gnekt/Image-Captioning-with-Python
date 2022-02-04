@@ -156,7 +156,7 @@ class CaRNet(nn.Module):
         # since our classifier is a nn.Module, we can load it using pytorch facilities (mapping it to the right device)
         self.C.load_state_dict(torch.load(f"{file_path}/{self.name_net}_{self.C.encoder_dim}_{self.R.hidden_dim}_{self.R.attention.attention_dim if self.attention == True else 0}_C.pth", map_location=self.device))
         self.R.load_state_dict(torch.load(f"{file_path}/{self.name_net}_{self.C.encoder_dim}_{self.R.hidden_dim}_{self.R.attention.attention_dim if self.attention == True else 0}_R.pth", map_location=self.device))
-    
+        
     def forward(self, images: torch.tensor, captions: torch.tensor) -> torch.tensor:
         """Provide images to the net for retrieve captions
 

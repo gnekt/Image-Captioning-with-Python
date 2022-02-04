@@ -20,7 +20,20 @@ class Attention(Enum):
     """
         Attention type list.
     """
-    Attention = 0
+    Attention = "Attention"
+    
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return str(self)
+    
+    @staticmethod
+    def argparse(s):
+        try:
+            return Attention[s]
+        except KeyError:
+            return s
     
 def FactoryAttention(attention: Attention):
     """ Attention Factory 
@@ -46,9 +59,22 @@ class Encoder(Enum):
     """
         Encoder type list.
     """
-    CResNet50 = 0
-    CResNet50Attention = 1
+    CResNet50 = "CResNet50"
+    CResNet50Attention = "CResNet50Attention"
     
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return str(self)
+    
+    @staticmethod
+    def argparse(s):
+        try:
+            return Encoder[s]
+        except KeyError:
+            return s
+        
 def FactoryEncoder(encoder: Encoder):
     """ Encoder Factory 
 
@@ -75,11 +101,24 @@ class Decoder(Enum):
     """
         Decoder type list.
     """
-    RNetvI = 0
-    RNetvH = 1
-    RNetvHC = 2
-    RNetvHCAttention = 3 
+    RNetvI = "RNetvI"
+    RNetvH = "RNetvH"
+    RNetvHC = "RNetvHC"
+    RNetvHCAttention = "RNetvHCAttention"
     
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return str(self)
+    
+    @staticmethod
+    def argparse(s):
+        try:
+            return Decoder[s]
+        except KeyError:
+            return s
+        
 def FactoryDecoder(decoder: Decoder):
     """ Decoder Factory 
 
@@ -110,7 +149,20 @@ class NeuralNet(Enum):
     """
         NeuralNet type list.
     """
-    CaRNet = 0
+    CaRNet = "CaRNet"
+    
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return str(self)
+    
+    @staticmethod
+    def argparse(s):
+        try:
+            return NeuralNet[s]
+        except KeyError:
+            return s
 
 def FactoryNeuralNet(net: NeuralNet):
     """ NeuralNet Factory 

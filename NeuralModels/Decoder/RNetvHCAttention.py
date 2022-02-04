@@ -26,7 +26,13 @@ class RNetvHCAttention(nn.Module):
         """
         super(RNetvHCAttention, self).__init__()
 
-        print(f"Construction of RNetvHC:\n\t Hidden Number of Dimensions: {hidden_dim},\n\t Padding Index: {padding_index},\n\t Vocabulary Size: {vocab_size},\n\t Embedding Number of Dimension: {embedding_dim},\n\t Device: {device}")
+        print(f"Construction of RNetvHCAttention:\n \
+                LSTM Capacity: {hidden_dim},\n \
+                Padding Index: {padding_index},\n \
+                Vocabulary Size: {vocab_size},\n \
+                Embedding dimension: {embedding_dim},\n \
+                Attention Dimension: {attention.attention_dim},\n \
+                Device: {device}")
         
         self.device = torch.device(device)
         # Embedding layer that turns words into a vector of a specified size

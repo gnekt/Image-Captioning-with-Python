@@ -30,7 +30,12 @@ class RNetvH(nn.Module):
         """
         super(RNetvH, self).__init__()
 
-        print(f"Construction of RNetvH:\n\t Hidden Number of Dimensions: {hidden_dim},\n\t Padding Index: {padding_index},\n\t Vocabulary Size: {vocab_size},\n\t Embedding Number of Dimension: {embedding_dim},\n\t Device: {device}")
+        print(f"Construction of RNetvH:\n \
+                LSTM Capacity: {hidden_dim},\n \
+                Padding Index: {padding_index},\n \
+                Vocabulary Size: {vocab_size},\n \
+                Embedding dimension: {embedding_dim},\n \
+                Device: {device}")
         
         self.device = torch.device(device)
         self.hidden_dim = hidden_dim
