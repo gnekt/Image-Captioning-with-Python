@@ -21,6 +21,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 from VARIABLE import MAX_CAPTION_LENGTH
+from .Metrics import Result
 
 class CaRNet(nn.Module):
     """
@@ -79,7 +80,7 @@ class CaRNet(nn.Module):
         self.padding_index = padding_index
         self.device = torch.device(device)
         self.name_net = net_name
-        
+        self.result_storer = Result()
         # Define Encoder and Decoder
         self.C = encoder(encoder_dim = encoder_dim, device = device)
         self.R = None
@@ -196,8 +197,8 @@ class CaRNet(nn.Module):
         # from torchmetrics import JaccardIndex
         # intersection_over_union = JaccardIndex(num_classes=self.R.vocab_size).cuda() if self.device.type != "cpu" else JaccardIndex(num_classes=self.R.vocab_size)
         # return intersection_over_union(outputs, labels)
-        outputs = np.array(list(map(lambda output: np.unique(output), outputs.cpu()))) # Remove duplicate from each caption
-        labels = np.array(list(map(lambda label: np.unique(label), labels.cpu()))) # Remove duplicate from each caption
+        outputs = np.array(list(map(lambda output: np.unique(output), outputs.cpu())), dtype=object) # Remove duplicate from each caption
+        labels = np.array(list(map(lambda label: np.unique(label), labels.cpu())), dtype=object) # Remove duplicate from each caption
         
         unions = list(map(lambda index: len(np.union1d(outputs[index],labels[index])), range(labels.shape[0])))
         intersections = list(map(lambda index: len(np.intersect1d(outputs[index],labels[index])), range(labels.shape[0])))
@@ -249,7 +250,7 @@ class CaRNet(nn.Module):
             epoch_train_acc = 0.
             epoch_train_loss = 0.
             epoch_num_train_examples = 0
-
+            batch_id_reporter = 0
             for images,captions_ids,captions_length in  train_set:
                 optimizer.zero_grad() 
                 
@@ -333,9 +334,12 @@ class CaRNet(nn.Module):
                     
                     # printing (mini-batch related) stats on screen
                     print(f"  mini-batch:\tloss={loss.item():.4f}, tr_acc={batch_train_acc:.5f}")
-            
+                    
+                    # Store result of this batch in a dataframe
+                    self.result_storer.add_train_info(epoch=int(e), batch_id=int(batch_id_reporter),loss=float(loss.item()),accuracy=float(batch_train_acc) )
+                    batch_id_reporter += 1
             # Evaluate the accuracy of the validation set
-            val_acc = self.__eval_net(validation_set,vocabulary)
+            val_acc = self.eval_net(validation_set,vocabulary)
 
             # # saving the model if the validation accuracy increases
             if val_acc > best_val_acc:
@@ -344,12 +348,15 @@ class CaRNet(nn.Module):
                 self.save("./.saved")
 
             epoch_train_loss /= epoch_num_train_examples
-
+            # Store the result of the validation set in this epoch
+            self.result_storer.add_validation_info(epoch=int(e), accuracy=float(val_acc))
             # printing (epoch related) stats on screen
             print(f"epoch={e + 1}/{epochs}:\tloss={epoch_train_loss:.4f}, tr_acc={epoch_train_acc / epoch_num_train_examples:.5f}, val_acc={val_acc:.5f}, {'BEST!' if best_epoch == e+1 else ''}")
-
-    def __eval_net(self, data_set, vocabulary):
-        """ Dunder method: Evaluate the validation set
+        # store data in files
+        self.result_storer.flush()
+        
+    def eval_net(self, data_set, vocabulary):
+        """ Evaluate a data set
 
         Args:
             data_set (MyDataset): 
