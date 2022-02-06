@@ -29,7 +29,7 @@ class RNetvHC(nn.Module):
         """
         super(RNetvHC, self).__init__()
 
-        print(f"Construction of RNetvH:\n \
+        print(f"Construction of RNetvHC:\n \
                 LSTM Capacity: {hidden_dim},\n \
                 Padding Index: {padding_index},\n \
                 Vocabulary Size: {vocab_size},\n \
