@@ -78,7 +78,7 @@ if __name__ == "__main__":
         args.net_name = "CARNetvHCAttention"
         
     if args.attention == False:
-        args.net_name = f"Ca{args.decoder}"
+        args.net_name = f"Ca{args.decoder.name}"
         encoder = FactoryEncoder(Encoder.CResNet50)
         decoder = FactoryDecoder(args.decoder)
     ####################################
