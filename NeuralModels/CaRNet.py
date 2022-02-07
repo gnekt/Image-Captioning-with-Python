@@ -346,14 +346,14 @@ class CaRNet(nn.Module):
                 best_val_acc = val_acc
                 best_epoch = e + 1                
                 self.save("./.saved")
-
+                
             epoch_train_loss /= epoch_num_train_examples
             # Store the result of the validation set in this epoch
             self.result_storer.add_validation_info(epoch=int(e), accuracy=float(val_acc))
             # printing (epoch related) stats on screen
             print(f"epoch={e + 1}/{epochs}:\tloss={epoch_train_loss:.4f}, tr_acc={epoch_train_acc / epoch_num_train_examples:.5f}, val_acc={val_acc:.5f}, {'BEST!' if best_epoch == e+1 else ''}")
-        # store data in files
-        self.result_storer.flush()
+            # store data in files
+            self.result_storer.flush()
         
     def eval_net(self, data_set, vocabulary):
         """ Evaluate a data set
