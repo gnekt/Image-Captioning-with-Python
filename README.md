@@ -26,6 +26,7 @@ You ca read the project, you stay in wonderland, and I show you how deep the rab
 - [How to run the code](#how-to-run-the-code)
   * [Python supported versions](#python-supported-versions)
   * [Libraries Dependency](#libraries-dependency)
+  * [Enviroment Variable](#enviroment-variable)
   * [CLI Explanation](#cli-explanation)
   * [GPUs Integration](#gpus-integration)
 - [Data Pipeline](#data-pipeline)
@@ -97,7 +98,7 @@ pip install -r requirements.txt
 ```
 ## Enviroment Variable
 Since some attributes of the repository are useful in more than one file, create an enviroment container is a way to accomplish this necessity.
-Use a `.env` file is the most straightforward method, but since we want full compatibility among OS, a VARIABLE.py is a good compromise.
+Use a `.env` file is the most straightforward method, but since we want full compatibility among OS, a `VARIABLE.py` is a good compromise.
 The CONSTANT defined are the following:
 |COSTANT| MEANING |
 |--|--|
