@@ -36,6 +36,7 @@ You ca read the project, you stay in wonderland, and I show you how deep the rab
   * [During training](#during-training)
   * [During evaluation](#during-evaluation)
 - [Project structure](#project-structure)
+  * [Filesystem](#Filesystem)
   * [Interfaces](#interfaces)
   * [Encoder](#encoder)
     + [CResNet50](#cresnet50)
@@ -66,6 +67,16 @@ For better understanding the code and the information inside, since this reposit
 [![Linux](https://svgshare.com/i/Zhy.svg)](https://svgshare.com/i/Zhy.svg) [![macOS](https://svgshare.com/i/ZjP.svg)](https://svgshare.com/i/ZjP.svg) [![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg)
 
 The code can be run in every OS, feel free to use whatever you want. Of course a high-end machine is mandatory, since the huge amout of needed data can lead to out-of-memory error in low-end machine. 
+**Remember that the dataset need to be downloaded before launching and it must respect the dataset format**
+How to prepare the dataset for C[aA]RNet training?
+
+ 1. [Download](https://www.kaggle.com/hsankesara/flickr-image-dataset) the dataset.
+ 2. Extract it in the root of the repository.
+ 3. Rename the folder into *dataset*
+ 4. Rename the images folder into *images*
+
+If you have a special situation, you can modify the [VARIABLE.py](#enviroment-variable) file and/or some optional parameters before launching the script ([CLI Explanation](#cli-explanation)
+).
 
 ## Python supported versions
 The code is ready to run for every version of python greater than 3.6.
@@ -84,6 +95,16 @@ Naturally inside the root of the package is present a requirements.txt file, you
 ```bash
 pip install -r requirements.txt
 ```
+## Enviroment Variable
+Since some attributes of the repository are useful in more than one file, create an enviroment container is a way to accomplish this necessity.
+Use a `.env` file is the most straightforward method, but since we want full compatibility among OS, a VARIABLE.py is a good compromise.
+The CONSTANT defined are the following:
+|COSTANT| MEANING |
+|--|--|
+| MAX_CAPTION_LENGTH | From the dataset are picked only samples whose caption has a length less or equal than this value |
+|IMAGES_SUBDIRECTORY_NAME| The directory name which contains all the images (It must be under the root of the dataset folder) | 
+| CAPTION_FILE_NAME | The file under the root of the dataset folder which contains all the captions.|
+| EMBEDDINGS_REPRESENTATION | The way of creating the word embedding. UN-USED FOR NOW|
 
 ## CLI Explanation
 The code can be run through a shell, here you can find how you can execute correctly the script, what are the custom parameters that you can feed before the execution and what are the meaning for each of them.
@@ -196,7 +217,7 @@ During the training procedure the following outputs are produced:
  4. Every time that the net reaches the best value in accuracy on validation data, the net is stored in non-volatile memory.
 
 ### 1
-The Dataframe is stored as csv file *train_results.csv* at the end of training, with the following structure:
+The Dataframe is stored as csv file *train_results.csv* at the end of each epoch, with the following structure:
  The first row of the file is the header, the column associated are defined in the table below:
 | Parameter | Type     | Description                       |
 | :-------- | :------- | :-------------------------------- |
@@ -206,7 +227,7 @@ The Dataframe is stored as csv file *train_results.csv* at the end of training, 
 |   Accuracy    | `float` | The accuracy evaluated for this batch |
 
 ### 2
-The Dataframe is stored as csv file *validation_results.csv* at the end of training, with the following structure:
+The Dataframe is stored as csv file *validation_results.csv* at the end of each epoch, with the following structure:
  The first row of the file is the header, the column associated are defined in the table below:
 | Parameter | Type     | Description                       |
 | :-------- | :------- | :-------------------------------- |
@@ -239,6 +260,50 @@ The structure of the project take into account the possibility of expansion from
 This diagram is only general, and has the scope of grabbing what you could expect to see in the code, so the entities are empty and connected following their depencies.
 Each method has a related docstring, so use it as reference.
 ![UML](https://i.imgur.com/xmGekz5.jpg)
+
+## Filesystem
+The Filesystem structure of the project has this form:
+
+    C[aA]RNet/
+    ├─ NeuralModels/
+    │  ├─ Attention/
+    │  │  ├─ IAttention.py
+    │  │  ├─ SoftAttention.py
+    │  ├─ Decoder/
+    │  │  ├─ IDecoder.py
+    │  │  ├─ RNetvH.py
+    │  │  ├─ RNetvHC.py
+    │  │  ├─ RNetvHCAttention.py
+    │  │  ├─ RNetvI.py
+    │  ├─ Encoder/
+    │  │  ├─ IEncoder.py
+    │  │  ├─ CResNet50.py
+    │  │  ├─ CResNet50Attention.py
+    │  ├─ CaARNet.py
+    │  ├─ Dataset.py
+    │  ├─ FactoryModels.py
+    │  ├─ Metrics.py
+    │  ├─ Vocabulary.py
+    ├─ VARIABLE.py
+    ├─ main.py
+| File | Description |
+|--|--|
+| `VARIABLE.py` | Costant value used in the project|
+| `main.py` | Entry point for execute the net|
+| `IAttention.py` | The interface for implementing a new Attention model |
+| `SoftAttention.py` | Soft Attention implementation |
+| `IDecoder.py` | The interface for implementing a new decoder |
+| `RNetvH.py` | Decoder implementation as LSTM H-version |
+| `RNetvHC.py` | Decoder implementation as LSTM HC-version |
+| `RNetvHCAttention.py` | Decoder implementation as LSTM HC-version with Attention mecchanism|
+| `IEncoder.py` | The interface for implementing a new encoder |
+| `CResNet50.py` | ResNet50 as encoder |
+| `CResNet50Attention.py` | ResNet50 as encoder ready for attention mechanism |
+| `CaRNet.py` | C[aA]RNet implementation |
+| `Dataset.py` |  Manager for a dataset |
+| `FactoryModels.py` | The Factory Design Pattern Implementation for every neural model proposed |
+| `Metrics.py` | Produce report file |
+| `Vocabulary.py` | Vocabulary manager entity |
 
 
 ## Interfaces
