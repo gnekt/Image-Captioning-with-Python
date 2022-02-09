@@ -356,7 +356,7 @@ RNetvHC initialize at time t_0 both the hidden and cell state with the image con
 
 ### RNetvHCAttention
 This implementation combine a RNetvHC with Attention mecchanism.
-![RNetvHCAttention](https://i.imgur.com/3GlMyJh.png)
+![RNetvHCAttention](https://i.imgur.com/64rTN7q.png)
 Credit to christiandimaio et al. 2022
 
 # Training Procedure
