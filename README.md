@@ -363,7 +363,9 @@ The two encoder proposal are based on ResNet50 *(He et al. 2015, Deep Residual L
 Depending on if we want attention or not, it removes one or more layer from the original net.
 
 ![ResNet50](https://www.researchgate.net/publication/336805103/figure/fig4/AS:817882309079050@1572009746601/ResNet-50-neural-network-architecture-56.ppm)
+
 (ResNet-50 neural network architecture [56].) [Privacy-Constrained Biometric System for Non-Cooperative Users](https://www.researchgate.net/publication/336805103_Privacy-Constrained_Biometric_System_for_Non-Cooperative_Users)
+
 ### CResNet50
 The 1st implementation remove the last layer from ResNet50, exposing the GlobalAveragePooling. Next to the pooling a linear layer of dimension *encoder_dim* is added, it will receive as input what the AveragePooling produce, in case of ResNet50 2048inputs.
  
@@ -376,6 +378,7 @@ By default the total number of portions with a squared RGB images as input (3,22
 The decoder is based on the concept of Recurrent Neural Network, specifically in the declination of LSTM (Long-Short Term Memory) a type of RNN that exploit the way of updating the hidden state of the Network.
 ![LSTM](https://www.researchgate.net/profile/Xuan_Hien_Le2/publication/334268507/figure/fig8/AS:788364231987201@1564972088814/The-structure-of-the-Long-Short-Term-Memory-LSTM-neural-network-Reproduced-from-Yan.png)
 *(The structure of the Long Short-Term Memory (LSTM) neural network. Reproduced from Yan [38].)* [Application of Long Short-Term Memory (LSTM) Neural Network for Flood Forecasting](https://www.researchgate.net/publication/334268507_Application_of_Long_Short-Term_Memory_LSTM_Neural_Network_for_Flood_Forecasting)
+
 Each model starts from this idea and try different solution for feeding the initial context retrieved by the encoder:
 
  1. RNetvI: The image context is the input of the LSTM at time t_0.
