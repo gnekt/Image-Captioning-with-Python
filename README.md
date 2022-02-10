@@ -93,6 +93,7 @@ As you will see also in the code, some facilities are not available in python ve
 |  Pillow | 8.4.0  |
 |  Numpy | 1.19.5  |
 |  Pandas | 1.1.5  |
+|  Matplotlib | 3.3.4  |
 
 Naturally inside the root of the package is present a requirements.txt file, you can install in your enviroment (or v.env.) all the required packages with the command below, executed in the shell with the enviroment activated:
 ```bash
