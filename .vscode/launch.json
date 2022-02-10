@@ -1,6 +1,0 @@
-{
-    "configurations": [
-    {"name":"Main","type":"python","request":"launch","program":"${workspaceFolder}/main.py","console":"integratedTerminal", 
-        "args": ["RNetvI", "train", "0", "1024", "--dataset_folder", "./dataset/flickr30k_images", "--device", "cuda:0"]}
-    ]
-}
