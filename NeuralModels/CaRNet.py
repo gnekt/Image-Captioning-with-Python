@@ -228,7 +228,7 @@ class CaRNet(nn.Module):
         # Initialize Loss: CrossEntropyLoss -> Softmax + NegativeLogLikelihoodLoss 
         # Q. Why ignore_index is setted to <START> instead of <PAD>?
         # A. In the training, both output of the CaRNet and Target is a padded tensor, but when we compute the loss it will evaluate the tensor with pack_padded_sequence.
-        #       And since <START> token is hardcoded as output at t_0 and it is contained into the Target we could avoid the computation of loss on it, since will be 1.                     
+        #       And since <START> token is hardcoded as output at t_0 and it is contained into the Target we could avoid the computation of loss on it, since will be 0.                     
         
         criterion = nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<START>"],reduction="sum").cuda() if self.device.type == "cuda"  \
                                             else nn.CrossEntropyLoss(ignore_index=vocabulary.predefined_token_idx()["<START>"],reduction="sum")
@@ -533,29 +533,3 @@ class CaRNet(nn.Module):
         
         self.switch_mode("training")
         
-# Example of usage
-if __name__ == "__main__":
-    from torch.utils.data import DataLoader
-    from FactoryModels import *
-    ds = MyDataset("./dataset", percentage=1)
-    v = Vocabulary(ds,reload=True) 
-    
-    # Load Encoder and Decoder models
-    decoder = FactoryDecoder(Decoder.RNetvI)
-    encoder = FactoryEncoder(Encoder.CResNet50Attention)
-    
-    dc = ds.get_fraction_of_dataset(percentage=70, delete_transfered_from_source=True)
-    df = ds.get_fraction_of_dataset(percentage=30, delete_transfered_from_source=True)
-    # use dataloader facilities which requires a preprocessed dataset
-       
-    
-    dataloader_training = DataLoader(dc, batch_size=32,
-                        shuffle=True, num_workers=2, collate_fn = lambda data: ds.pack_minibatch_training(data,v))
-    
-    dataloader_evaluation = DataLoader(df, batch_size=32,
-                        shuffle=True, num_workers=2, collate_fn = lambda data: ds.pack_minibatch_evaluation(data,v))
-    
-    
-    net = CaRNet(encoder, decoder, "CaRNetvI",1596,512,0,len(v.word2id.keys()),v.embeddings.shape[1],"cuda:0")
-    #net.load("CaRNetvI")
-    net.train(dataloader_training,dataloader_evaluation,1e-3,500,v)

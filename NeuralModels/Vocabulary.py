@@ -145,15 +145,6 @@ class Vocabulary():
         return len(self.word2id.keys())
     
     
-# ----------------------------------------------------------------
-# Usage example
-
-if __name__ == '__main__':
-    #Load the vocabulary
-    pippo = MyDataset(...)
-    v = Vocabulary(source_dataset=pippo)
-    # Make a translation
-    print(v.translate(["I","like","PLay","piano","."]))
     
     
     
