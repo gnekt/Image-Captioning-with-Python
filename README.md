@@ -159,19 +159,19 @@ The following examples are the commands that i used for personal experiments.
 
 `CaRNetvI`
 ```bash
-python main.py RNetvI train 0 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+python main.py RNetvI train 0 1024 --dataset_folder ./dataset --device cuda:0 --epochs 150
 ```
 `CaRNetvH`
 ```bash
-python main.py RNetvH train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+python main.py RNetvH train 1024 1024 --dataset_folder ./dataset --device cuda:0 --epochs 150
 ```
 `CaRNetvHC`
 ```bash
-python main.py RNetvHC train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+python main.py RNetvHC train 1024 1024 --dataset_folder ./dataset --device cuda:0 --epochs 150
 ```
 `CaRNetvHCAttention`
 ```bash
-python main.py RNetvHCAttention train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150 --attention t --attention_dim 1024
+python main.py RNetvHCAttention train 1024 1024 --dataset_folder ./dataset --device cuda:0 --epochs 150 --attention t --attention_dim 1024
 ```
 
 **Evaluation**
