@@ -99,6 +99,12 @@ Naturally inside the root of the package is present a requirements.txt file, you
 ```bash
 pip install -r requirements.txt
 ```
+
+If pip doesn't find this version of torch, you can execute in the shell with venv activated:
+```bash
+pip install torch==1.3.0+cu100 torchvision==0.4.1+cu100 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
 ## Enviroment Variable
 Since some attributes of the repository are useful in more than one file, create an enviroment container is a way to accomplish this necessity.
 Use a `.env` file is the most straightforward method, but since we want full compatibility among OS, a `VARIABLE.py` is a good compromise.
