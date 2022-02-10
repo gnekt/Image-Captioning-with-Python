@@ -401,7 +401,7 @@ to do
 
  -  (Vinyals et al. 2014) [Show and Tell: A Neural Image Caption Generator](https://arxiv.org/abs/1411.4555) 
  - (Xu et al. 2015) [Show, Attend and Tell: Neural Image Caption Generation with Visual Attention](https://arxiv.org/pdf/1502.03044.pdf)
- - Material, Code and Beautiful lessons by Professor [Stefano Melacci](https://www3.diism.unisi.it/~melacci/)
+ - Material, Code and Lessons by Professor [Stefano Melacci](https://www3.diism.unisi.it/~melacci/)
 
 ## Authors
 
