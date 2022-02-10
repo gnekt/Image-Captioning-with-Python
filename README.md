@@ -19,6 +19,8 @@ Here you can find the table of content, before you start remember:
 You ca read the project, you stay in wonderland, and I show you how deep the rabbit hole goes.
 
 
+Under the Hidden Directory `.saved` can be found all the pretrained versions of C[aA]RNet.
+
 # Table of contents
 - [A Py-thonic Implementation of Image Captioning, C[aA]RNet!](#a-py-thonic-implementation-of-image-captioning--c-aa-rnet-)
 - [Table of contents](#table-of-contents)
@@ -28,6 +30,7 @@ You ca read the project, you stay in wonderland, and I show you how deep the rab
   * [Libraries Dependency](#libraries-dependency)
   * [Enviroment Variable](#enviroment-variable)
   * [CLI Explanation](#cli-explanation)
+	  * [Examples](#examples)
   * [GPUs Integration](#gpus-integration)
 - [Data Pipeline](#data-pipeline)
   * [Dataset Format](#dataset-format)
@@ -50,8 +53,7 @@ You ca read the project, you stay in wonderland, and I show you how deep the rab
 - [Training Procedure](#training-procedure)
   * [Loss type](#loss-type)
     + [Remark: Loss in the attention version](#remark--loss-in-the-attention-version)
-- [Results](#results-1)
-  * [Personal Experiments](#personal-experiments)
+- [Personal Experiments](#personal-experiments)
 - [References](#references)
   * [Authors](#authors)
 
@@ -150,6 +152,46 @@ Optional parameters:
 | --workers | Number of working units used to load the data (Default: 4) | Used only in training mode |
 | --device| Device to be used for computations \in {cpu, cuda:0, cuda:1, ...} (Default: cpu) | Used only in training mode |
 
+### Examples
+The following examples are the commands that i used for personal experiments.
+
+**Training**
+
+`CaRNetvI`
+```bash
+python main.py RNetvI train 0 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+```
+`CaRNetvH`
+```bash
+python main.py RNetvH train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+```
+`CaRNetvHC`
+```bash
+python main.py RNetvHC train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150
+```
+`CaRNetvHCAttention`
+```bash
+python main.py RNetvHCAttention train 1024 1024 --dataset_folder ./dataset/flickr30k_images --device cuda:0 --epochs 150 --attention t --attention_dim 1024
+```
+
+**Evaluation**
+
+`CaRNetvI`
+```bash
+python main RNetvI eval 5078 1024 --image_path ./33465647.jpg
+```
+`CaRNetvH`
+```bash
+python main.py RNetvH eval 1024 1024 --image_path ./33465647.jpg
+```
+`CaRNetvHC`
+```bash
+python main.py RNetvHC eval 1024 1024 --image_path ./33465647.jpg
+```
+`CaRNetvHCAttention`
+```bash
+python main.py RNetvHCAttention  eval 1024 1024 --attention t --attention_dim 1024 --image_path ./33465647.jpg
+```
 
 ## GPUs Integration
 
@@ -241,8 +283,8 @@ A caption.png file is generated. It includes the caption generated from C[aA]RNe
 If the attention is enabled, a file named attention.png is also produced and it includes for each word generated the associate attention in the source image.
 
 ### 4
-Every time, during the training, a pick of accuracy in the evaluation of the validation set is reached, the net is stored in non-volatile memory.
-The directory on which the net are stored is hidden and it is called *.saved* under the root of the repository.
+Every time, during the training, if a peack of accuracy in the evaluation of the validation set is reached, the net is stored in non-volatile memory.
+The directory on which the net are stored is hidden and it is called `.saved` under the root of the repository.
 This file are crucial for further training improvement and for evaluations after training.
 The pattern of each file is the following:
 
@@ -266,6 +308,10 @@ Each method has a related docstring, so use it as reference.
 The Filesystem structure of the project has this form:
 
     C[aA]RNet/
+    ├─ .saved/
+    ├─ dataset/
+    │  ├─ images/
+    │  ├─ results.csv
     ├─ NeuralModels/
     │  ├─ Attention/
     │  │  ├─ IAttention.py
@@ -287,6 +333,7 @@ The Filesystem structure of the project has this form:
     │  ├─ Vocabulary.py
     ├─ VARIABLE.py
     ├─ main.py
+ 
 | File | Description |
 |--|--|
 | `VARIABLE.py` | Costant value used in the project|
@@ -390,12 +437,9 @@ In the attention version we add a second term to the loss, the double stochastic
 </p>
 This can be interpreted as encouraging the model to pay equal attention to every part of the image over the course of generation.
 
-  
-# Results
-to do
-
 ## Personal Experiments
-to do
+Here you can see the training that i launched as experiments, the pretrained networks can be found under the folder `.saved`
+![Training Table](https://i.imgur.com/sqgEPzM.png)
 
 # References
 
