@@ -1,6 +1,6 @@
 
 
-# A Py-thonic Implementation of Image Captioning, C[aA]RNet!   
+# A Pythonic Implementation of Image Captioning, C[aA]RNet!   
 [![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)   ![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white)  [![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)  
 
 **Convolutional(and|Attention)RecurrentNet!**
